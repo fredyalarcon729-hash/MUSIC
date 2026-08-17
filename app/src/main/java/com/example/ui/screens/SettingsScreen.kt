@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Timer
@@ -289,6 +290,58 @@ fun SettingsScreen(
                                 text = "Listo para reproducir en pantalla del auto, controles al volante y Bluetooth.",
                                 style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
                                 fontSize = 11.sp
+                            )
+                        }
+                    }
+                }
+            }
+
+            // About Section
+            item {
+                Text(
+                    text = "ACERCA DE",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        color = NeonCyan,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    ),
+                    modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+                )
+            }
+
+            item {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = ObsidianSurface,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(NeonPurpleLight.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Person, null, tint = NeonPurpleLight, modifier = Modifier.size(24.dp))
+                        }
+
+                        Spacer(modifier = Modifier.width(14.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Autor",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = "Fredy Alarcón Ordoñez",
+                                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                                fontSize = 13.sp
                             )
                         }
                     }

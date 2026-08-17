@@ -4,6 +4,7 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
+import com.example.core.source.ConfigManager
 import com.example.core.source.ExternalServicesManager
 import com.example.core.source.LocalMusicSourceProvider
 import com.example.core.source.youtube.YouTubeAudioResolver
@@ -27,6 +28,9 @@ class FusionApplication : Application() {
     lateinit var youTubeProvider: YouTubeMusicSourceProvider
         private set
 
+    lateinit var configManager: ConfigManager
+        private set
+
     lateinit var downloadManager: YouTubeDownloadManager
         private set
 
@@ -44,9 +48,10 @@ class FusionApplication : Application() {
 
         createNotificationChannel()
 
+        configManager = ConfigManager(this)
         database = FusionDatabase.getInstance(this)
         localProvider = LocalMusicSourceProvider(this)
-        val resolver = YouTubeAudioResolver()
+        val resolver = YouTubeAudioResolver(configManager.getYouTubeApiKey())
         youTubeProvider = YouTubeMusicSourceProvider(resolver)
         downloadManager = YouTubeDownloadManager(this, database.musicDao(), resolver)
 

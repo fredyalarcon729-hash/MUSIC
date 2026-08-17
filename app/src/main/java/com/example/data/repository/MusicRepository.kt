@@ -3,7 +3,6 @@ package com.example.data.repository
 import com.example.core.model.Album
 import com.example.core.model.Artist
 import com.example.core.model.MusicSource
-import com.example.core.model.Playlist
 import com.example.core.model.Song
 import com.example.core.source.LocalMusicSourceProvider
 import com.example.core.source.youtube.YouTubeAudioResolver
@@ -39,21 +38,19 @@ class MusicRepository(
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private val _rawSongs = MutableStateFlow<List<Song>>(emptyList())
-    val rawSongs: StateFlow<List<Song>> = _rawSongs.asStateFlow()
 
     private val _isScanning = MutableStateFlow(false)
     val isScanning: StateFlow<Boolean> = _isScanning.asStateFlow()
 
     val favoritesFlow: Flow<List<FavoriteEntity>> = musicDao.getAllFavorites()
     val playlistsFlow: Flow<List<PlaylistEntity>> = musicDao.getAllPlaylists()
-    val historyFlow: Flow<List<HistoryEntity>> = musicDao.getRecentHistory()
 
     // Downloaded songs from Room
     val downloadedSongsFlow: Flow<List<Song>> = combine(
         musicDao.getAllDownloadedSongs(),
         favoritesFlow
     ) { downloadedEntities, favs ->
-        val favSet = favs.map { it.songId }.toSet()
+        val favSet = favs.asSequence().map { it.songId }.toSet()
         downloadedEntities.map { entity ->
             Song(
                 id = entity.id,
@@ -68,7 +65,7 @@ class MusicRepository(
                 source = MusicSource.YOUTUBE,
                 isFavorite = favSet.contains(entity.id),
                 isDownloaded = true,
-                path = entity.localMediaUri
+                path = entity.localMediaUri,
             )
         }
     }.distinctUntilChanged()
@@ -81,13 +78,13 @@ class MusicRepository(
         downloadedSongsFlow,
         favoritesFlow
     ) { localSongs, downloadedSongs, favs ->
-        val favSet = favs.map { it.songId }.toSet()
+        val favSet = favs.asSequence().map { it.songId }.toSet()
         val localMapped = localSongs.map { song ->
             song.copy(isFavorite = favSet.contains(song.id))
         }
 
         // Merge, avoiding duplicate IDs if any
-        val localIds = localMapped.map { it.id }.toSet()
+        val localIds = localMapped.asSequence().map { it.id }.toSet()
         val nonDuplicateDownloaded = downloadedSongs.filterNot { localIds.contains(it.id) }
         localMapped + nonDuplicateDownloaded
     }.distinctUntilChanged()

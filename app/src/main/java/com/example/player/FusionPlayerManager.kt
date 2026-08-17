@@ -2,20 +2,19 @@ package com.example.player
 
 import android.content.Context
 import android.net.Uri
-import android.os.Handler
-import android.os.Looper
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
-import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.core.net.toUri
 import com.example.core.model.EqualizerPreset
 import com.example.core.model.MusicSource
 import com.example.core.model.PlayerUiState
 import com.example.core.model.RepeatMode
 import com.example.core.model.Song
+import com.example.core.source.LyricsResolver
 import com.example.core.source.youtube.YouTubeAudioResolver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,12 +32,14 @@ import kotlinx.coroutines.launch
  * Singleton player manager coordinating ExoPlayer instance, playback state, queue,
  * sleep timer, and reactive UI state updates.
  */
-class FusionPlayerManager private constructor(private val context: Context) {
+class FusionPlayerManager private constructor(private val applicationContext: Context) {
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var progressTickerJob: Job? = null
     private var sleepTimerJob: Job? = null
+    private var lyricsFetchJob: Job? = null
     private val youTubeResolver = YouTubeAudioResolver()
+    private val lyricsResolver = LyricsResolver()
 
     val exoPlayer: ExoPlayer by lazy {
         val audioAttributes = AudioAttributes.Builder()
@@ -46,7 +47,7 @@ class FusionPlayerManager private constructor(private val context: Context) {
             .setUsage(C.USAGE_MEDIA)
             .build()
 
-        ExoPlayer.Builder(context)
+        ExoPlayer.Builder(applicationContext)
             .setAudioAttributes(audioAttributes, true)
             .setHandleAudioBecomingNoisy(true)
             .build().apply {
@@ -79,7 +80,7 @@ class FusionPlayerManager private constructor(private val context: Context) {
             _uiState.update {
                 it.copy(
                     isBuffering = isBuffering,
-                    durationMs = if (duration > 0) duration else it.durationMs
+                    durationMs = if (duration > 0) duration else it.durationMs,
                 )
             }
 
@@ -98,10 +99,20 @@ class FusionPlayerManager private constructor(private val context: Context) {
                         currentSong = song,
                         currentQueueIndex = currentIndex,
                         currentPositionMs = 0L,
-                        durationMs = song.durationMs
+                        durationMs = song.durationMs,
                     )
                 }
+                fetchLyricsForSong(song)
             }
+        }
+    }
+
+    private fun fetchLyricsForSong(song: Song) {
+        lyricsFetchJob?.cancel()
+        _uiState.update { it.copy(currentLyrics = null) }
+        lyricsFetchJob = scope.launch {
+            val lyrics = lyricsResolver.fetchLyrics(song)
+            _uiState.update { it.copy(currentLyrics = lyrics) }
         }
     }
 
@@ -117,9 +128,10 @@ class FusionPlayerManager private constructor(private val context: Context) {
                     isBuffering = true
                 )
             }
+            fetchLyricsForSong(song)
 
             val resolvedQueue = queue.map { track ->
-                if (track.source == MusicSource.YOUTUBE && !track.isDownloaded && track.mediaUri.contains("youtube.com/watch")) {
+                if ((track.source == MusicSource.YOUTUBE) && !track.isDownloaded && track.mediaUri.contains("youtube.com/watch")) {
                     val directUrl = youTubeResolver.resolveAudioStreamUrl(track.id)
                     if (!directUrl.isNullOrEmpty()) track.copy(mediaUri = directUrl) else track
                 } else {
@@ -134,7 +146,7 @@ class FusionPlayerManager private constructor(private val context: Context) {
                     .setTitle(track.title)
                     .setArtist(track.artist)
                     .setAlbumTitle(track.album)
-                    .setArtworkUri(track.artworkUri?.let { Uri.parse(it) })
+                    .setArtworkUri(track.artworkUri?.toUri())
                     .build()
 
                 MediaItem.Builder()
@@ -162,17 +174,13 @@ class FusionPlayerManager private constructor(private val context: Context) {
         if (exoPlayer.isPlaying) {
             exoPlayer.pause()
         } else {
-            if (exoPlayer.playbackState == Player.STATE_IDLE && _uiState.value.currentSong != null) {
+            if ((exoPlayer.playbackState == Player.STATE_IDLE) && (_uiState.value.currentSong != null)) {
                 val song = _uiState.value.currentSong!!
                 playSong(song, _uiState.value.queue.ifEmpty { listOf(song) })
             } else {
                 exoPlayer.play()
             }
         }
-    }
-
-    fun play() {
-        exoPlayer.play()
     }
 
     fun pause() {
@@ -211,8 +219,7 @@ class FusionPlayerManager private constructor(private val context: Context) {
     }
 
     fun cycleRepeatMode() {
-        val current = _uiState.value.repeatMode
-        val next = when (current) {
+        val next = when (_uiState.value.repeatMode) {
             RepeatMode.OFF -> RepeatMode.ALL
             RepeatMode.ALL -> RepeatMode.ONE
             RepeatMode.ONE -> RepeatMode.OFF
@@ -239,7 +246,7 @@ class FusionPlayerManager private constructor(private val context: Context) {
             .setTitle(song.title)
             .setArtist(song.artist)
             .setAlbumTitle(song.album)
-            .setArtworkUri(song.artworkUri?.let { Uri.parse(it) })
+            .setArtworkUri(song.artworkUri?.toUri())
             .build()
         val mediaItem = MediaItem.Builder()
             .setMediaId(song.id)
@@ -260,7 +267,7 @@ class FusionPlayerManager private constructor(private val context: Context) {
             .setTitle(song.title)
             .setArtist(song.artist)
             .setAlbumTitle(song.album)
-            .setArtworkUri(song.artworkUri?.let { Uri.parse(it) })
+            .setArtworkUri(song.artworkUri?.toUri())
             .build()
         val mediaItem = MediaItem.Builder()
             .setMediaId(song.id)
@@ -336,11 +343,6 @@ class FusionPlayerManager private constructor(private val context: Context) {
                 _uiState.update { it.copy(sleepTimerMinutesLeft = null) }
             }
         }
-    }
-
-    fun setPlaybackSpeed(speed: Float) {
-        exoPlayer.playbackParameters = PlaybackParameters(speed)
-        _uiState.update { it.copy(playbackSpeed = speed) }
     }
 
     fun setEqualizerPreset(preset: EqualizerPreset) {

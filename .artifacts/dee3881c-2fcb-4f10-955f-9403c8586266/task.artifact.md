@@ -1,0 +1,7 @@
+- [x] Implement robust YouTube extraction (Web Remix client)
+    - [x] Update `resolveViaInnertube` configuration
+    - [x] Expand Piped/Invidious fallback list
+    - [x] Add browser-like headers (Origin, Referer)
+- [x] Verification
+    - [x] Build & Deploy
+    - [x] Verify real audio playback in emulator

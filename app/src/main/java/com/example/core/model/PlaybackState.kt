@@ -34,7 +34,8 @@ data class PlayerUiState(
     val sleepTimerMinutesLeft: Int? = null,
     val playbackSpeed: Float = 1.0f,
     val equalizerPreset: EqualizerPreset = EqualizerPreset.FLAT,
-    val audioQuality: AudioQuality = AudioQuality.HIGH
+    val audioQuality: AudioQuality = AudioQuality.HIGH,
+    val currentLyrics: Lyrics? = null
 ) {
     val progress: Float
         get() = if (durationMs > 0) (currentPositionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f) else 0f

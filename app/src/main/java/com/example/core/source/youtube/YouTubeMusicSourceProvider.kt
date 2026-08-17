@@ -28,7 +28,9 @@ class YouTubeMusicSourceProvider(
     override val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
 
     override suspend fun authenticate(credentials: Map<String, String>): Result<Unit> {
-        _isConnected.value = true
+        val apiKey = credentials["apiKey"]
+        resolver.updateApiKey(apiKey)
+        _isConnected.value = !apiKey.isNullOrEmpty()
         return Result.success(Unit)
     }
 

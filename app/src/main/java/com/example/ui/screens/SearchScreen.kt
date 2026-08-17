@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -62,6 +65,7 @@ import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.TextTertiary
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SearchScreen(
     query: String,
@@ -71,6 +75,7 @@ fun SearchScreen(
     allSongs: List<Song>,
     isSearchingYouTube: Boolean = false,
     downloadStates: Map<String, DownloadStatus> = emptyMap(),
+    searchHistory: List<String> = emptyList(),
     onQueryChanged: (String) -> Unit,
     onFilterChanged: (SearchFilter) -> Unit,
     onPlaySong: (Song, List<Song>) -> Unit,
@@ -78,6 +83,7 @@ fun SearchScreen(
     onPlayNext: (Song) -> Unit,
     onAddToQueue: (Song) -> Unit,
     onAddToPlaylist: (Song) -> Unit,
+    onClearHistory: () -> Unit = {},
     onDownloadSong: ((Song) -> Unit)? = null,
     onCancelDownload: ((String) -> Unit)? = null,
     onDeleteDownload: ((Song) -> Unit)? = null,
@@ -87,7 +93,8 @@ fun SearchScreen(
         modifier = modifier
             .fillMaxSize()
             .background(ObsidianDark)
-            .padding(top = 16.dp)
+            .statusBarsPadding()
+            .padding(top = 8.dp)
     ) {
         // Header
         Row(
@@ -204,55 +211,109 @@ fun SearchScreen(
 
         // Content / Results
         if (query.isBlank()) {
-            // Suggestion categories & quick jump
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 20.dp, vertical = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                Text(
-                    text = "Explora tu música local y YouTube",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = TextSecondary
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    listOf("Electrónica", "Lo-Fi Beats", "Synthwave", "Rock").forEach { tag ->
-                        Surface(
-                            onClick = { onQueryChanged(tag) },
-                            shape = RoundedCornerShape(12.dp),
-                            color = ObsidianSurfaceVariant,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder),
-                            modifier = Modifier.weight(1f)
+                if (searchHistory.isNotEmpty()) {
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = tag,
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = FontWeight.Medium,
-                                    color = NeonCyan,
-                                    textAlign = TextAlign.Center
-                                ),
-                                modifier = Modifier.padding(vertical = 12.dp)
+                                text = "Búsquedas Recientes",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = TextPrimary
                             )
+                            Text(
+                                text = "Limpiar",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = NeonCyan,
+                                modifier = Modifier.clickable { onClearHistory() }
+                            )
+                        }
+                    }
+
+                    item {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            searchHistory.forEach { historyQuery ->
+                                Surface(
+                                    onClick = { onQueryChanged(historyQuery) },
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = ObsidianSurface,
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder)
+                                ) {
+                                    Text(
+                                        text = historyQuery,
+                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = TextSecondary
+                                    )
+                                }
+                            }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
-
-                Text(
-                    text = "Busca cualquier canción en tu teléfono o en YouTube Music.\nPuedes escuchar online o descargar para reproducir offline sin conexión.",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = TextTertiary,
-                        textAlign = TextAlign.Center,
-                        lineHeight = 20.sp
+                item {
+                    Text(
+                        text = "Explora Categorías",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = TextPrimary
                     )
-                )
+                }
+
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        listOf("Electrónica", "Lo-Fi Beats", "Synthwave", "Rock").forEach { tag ->
+                            Surface(
+                                onClick = { onQueryChanged(tag) },
+                                shape = RoundedCornerShape(12.dp),
+                                color = ObsidianSurfaceVariant,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = tag,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Medium,
+                                        color = NeonCyan,
+                                        textAlign = TextAlign.Center
+                                    ),
+                                    modifier = Modifier.padding(vertical = 12.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Busca cualquier canción en tu teléfono o en YouTube Music.\nPuedes escuchar online o descargar para reproducir offline sin conexión.",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = TextTertiary,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 20.sp
+                            )
+                        )
+                    }
+                }
             }
         } else {
             val hasResults = searchResults.songs.isNotEmpty() ||

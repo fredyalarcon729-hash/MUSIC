@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -25,16 +26,25 @@ import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,15 +69,20 @@ import com.example.ui.theme.TextTertiary
 @Composable
 fun ServicesScreen(
     services: List<ExternalServiceDescriptor>,
+    youtubeApiKey: String,
+    onUpdateYouTubeApiKey: (String) -> Unit,
     onToggleService: (MusicSource, Boolean) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showApiKeyDialog by remember { mutableStateOf(false) }
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(ObsidianDark)
-            .padding(top = 16.dp)
+            .statusBarsPadding()
+            .padding(top = 8.dp)
     ) {
         // Top Bar
         Row(
@@ -176,21 +191,36 @@ fun ServicesScreen(
                                 )
                             }
 
-                            if (service.source == MusicSource.LOCAL) {
-                                Surface(
-                                    color = NeonCyan.copy(alpha = 0.15f),
-                                    shape = RoundedCornerShape(8.dp)
-                                ) {
-                                    Text(
-                                        text = "Activo por Defecto",
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            color = NeonCyan,
-                                            fontWeight = FontWeight.Bold
-                                        ),
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    )
+                        if (service.source == MusicSource.LOCAL) {
+                            Surface(
+                                color = NeonCyan.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = "Activo por Defecto",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = NeonCyan,
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        } else {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (service.source == MusicSource.YOUTUBE) {
+                                    IconButton(
+                                        onClick = { showApiKeyDialog = true },
+                                        modifier = Modifier.size(32.dp).padding(end = 4.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Settings,
+                                            contentDescription = "Configurar API Key",
+                                            tint = NeonCyan,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
                                 }
-                            } else {
+                                
                                 Switch(
                                     checked = service.isEnabled,
                                     onCheckedChange = { onToggleService(service.source, it) },
@@ -202,6 +232,7 @@ fun ServicesScreen(
                                     )
                                 )
                             }
+                        }
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -242,4 +273,70 @@ fun ServicesScreen(
             }
         }
     }
+
+    if (showApiKeyDialog) {
+        YouTubeApiKeyDialog(
+            currentKey = youtubeApiKey,
+            onDismiss = { showApiKeyDialog = false },
+            onSave = {
+                onUpdateYouTubeApiKey(it)
+                showApiKeyDialog = false
+            }
+        )
+    }
 }
+
+@Composable
+fun YouTubeApiKeyDialog(
+    currentKey: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit
+) {
+    var key by remember { mutableStateOf(currentKey) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = ObsidianSurface,
+        title = {
+            Text(
+                "YouTube Data API Key",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = TextPrimary
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    "Introduce tu API Key oficial de Google Cloud Console para habilitar la búsqueda nativa de YouTube v3.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = key,
+                    onValueChange = { key = it },
+                    label = { Text("API Key") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        focusedBorderColor = NeonCyan,
+                        unfocusedBorderColor = ObsidianBorder
+                    )
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(key) }) {
+                Text("Guardar", color = NeonCyan, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar", color = TextTertiary)
+            }
+        }
+    )
+}
+

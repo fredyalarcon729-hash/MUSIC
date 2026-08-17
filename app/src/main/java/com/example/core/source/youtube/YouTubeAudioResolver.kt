@@ -1,6 +1,5 @@
 package com.example.core.source.youtube
 
-import android.net.Uri
 import android.util.Log
 import com.example.core.model.MusicSource
 import com.example.core.model.Song
@@ -17,9 +16,12 @@ import java.util.concurrent.TimeUnit
 
 /**
  * High-performance YouTube audio search and media stream resolver.
- * Communicates with YouTube Innertube endpoints and redundant fallback gateways.
+ * Communicates with YouTube Data API v3 (official), Innertube, and fallback gateways.
  */
-class YouTubeAudioResolver {
+class YouTubeAudioResolver(
+    @Volatile
+    private var apiKey: String? = null
+) {
 
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(12, TimeUnit.SECONDS)
@@ -29,6 +31,10 @@ class YouTubeAudioResolver {
 
     private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
 
+    fun updateApiKey(newKey: String?) {
+        apiKey = newKey
+    }
+
     /**
      * Search YouTube for songs/music videos.
      */
@@ -36,7 +42,17 @@ class YouTubeAudioResolver {
         val trimmed = query.trim()
         if (trimmed.isEmpty()) return@withContext emptyList()
 
-        val results = mutableListOf<Song>()
+        // 0. Try official YouTube Data API v3 if key is present
+        apiKey?.let { key ->
+            try {
+                val officialResults = searchViaOfficialApi(trimmed, key)
+                if (officialResults.isNotEmpty()) {
+                    return@withContext officialResults
+                }
+            } catch (e: Exception) {
+                Log.w("YouTubeAudioResolver", "Official YouTube API search failed: ${e.message}")
+            }
+        }
 
         // 1. Try Innertube Android client search API
         try {
@@ -70,6 +86,53 @@ class YouTubeAudioResolver {
 
         // 4. Return curated music results matching query if all remote endpoints are unreachable
         return@withContext getCuratedFallbackMusic(trimmed)
+    }
+
+    private fun searchViaOfficialApi(query: String, key: String): List<Song> {
+        val encoded = URLEncoder.encode(query, "UTF-8")
+        val url = "https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=25&q=$encoded&type=video&videoCategoryId=10&key=$key"
+
+        val request = Request.Builder()
+            .url(url)
+            .get()
+            .build()
+
+        httpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) return emptyList()
+            val bodyString = response.body?.string() ?: return emptyList()
+            val root = JSONObject(bodyString)
+            val items = root.optJSONArray("items") ?: return emptyList()
+
+            val songs = mutableListOf<Song>()
+            for (i in 0 until items.length()) {
+                val item = items.optJSONObject(i) ?: continue
+                val idObj = item.optJSONObject("id") ?: continue
+                val videoId = idObj.optString("videoId")
+                if (videoId.isEmpty()) continue
+
+                val snippet = item.optJSONObject("snippet") ?: continue
+                val title = snippet.optString("title", "YouTube Song")
+                val channelTitle = snippet.optString("channelTitle", "YouTube Music")
+                val thumbnails = snippet.optJSONObject("thumbnails")
+                val thumbnailUrl = thumbnails?.optJSONObject("high")?.optString("url")
+                    ?: thumbnails?.optJSONObject("default")?.optString("url")
+                    ?: "https://i.ytimg.com/vi/$videoId/hqdefault.jpg"
+
+                songs.add(
+                    Song(
+                        id = "yt_$videoId",
+                        title = cleanTitle(title),
+                        artist = channelTitle,
+                        album = "YouTube Music",
+                        durationMs = 210000L,
+                        mediaUri = "https://www.youtube.com/watch?v=$videoId",
+                        artworkUri = thumbnailUrl,
+                        source = MusicSource.YOUTUBE
+                    )
+                )
+            }
+            return songs
+        }
     }
 
     private fun searchViaInnertube(query: String): List<Song> {
@@ -302,89 +365,116 @@ class YouTubeAudioResolver {
         val payload = JSONObject().apply {
             put("context", JSONObject().apply {
                 put("client", JSONObject().apply {
-                    put("clientName", "ANDROID")
-                    put("clientVersion", "19.09.37")
-                    put("androidSdkVersion", 34)
+                    put("clientName", "WEB_REMIX")
+                    put("clientVersion", "1.20240522.01.00")
                     put("hl", "es")
                     put("gl", "US")
                 })
             })
             put("videoId", videoId)
+            put("playbackContext", JSONObject().apply {
+                put("contentPlaybackContext", JSONObject().apply {
+                    put("signatureTimestamp", 19852)
+                })
+            })
         }
 
         val request = Request.Builder()
-            .url("https://www.youtube.com/youtubei/v1/player?prettyPrint=false")
+            .url("https://music.youtube.com/youtubei/v1/player?prettyPrint=false")
             .header("Content-Type", "application/json")
-            .header("User-Agent", "com.google.android.youtube/19.09.37 (Linux; U; Android 14; en_US) gzip")
-            .header("X-YouTube-Client-Name", "3")
-            .header("X-YouTube-Client-Version", "19.09.37")
+            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36")
+            .header("Origin", "https://music.youtube.com")
+            .header("Referer", "https://music.youtube.com/")
+            .header("X-YouTube-Client-Name", "67")
+            .header("X-YouTube-Client-Version", "1.20240522.01.00")
             .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
             .build()
 
-        httpClient.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) return null
-            val bodyString = response.body?.string() ?: return null
-            val root = JSONObject(bodyString)
+        try {
+            httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    Log.w("YouTubeAudioResolver", "Innertube resolution HTTP error: ${response.code}")
+                    return null
+                }
+                val bodyString = response.body?.string() ?: return null
+                val root = JSONObject(bodyString)
 
-            val streamingData = root.optJSONObject("streamingData") ?: return null
-            val adaptiveFormats = streamingData.optJSONArray("adaptiveFormats") ?: return null
+                val streamingData = root.optJSONObject("streamingData") ?: return null
+                val adaptiveFormats = streamingData.optJSONArray("adaptiveFormats") ?: return null
 
-            var bestAudioUrl: String? = null
-            var highestBitrate = 0
+                var bestAudioUrl: String? = null
+                var highestBitrate = 0
 
-            for (i in 0 until adaptiveFormats.length()) {
-                val format = adaptiveFormats.optJSONObject(i) ?: continue
-                val mimeType = format.optString("mimeType", "")
-                if (mimeType.startsWith("audio/")) {
-                    val url = format.optString("url")
-                    val bitrate = format.optInt("bitrate", 0)
-                    if (url.isNotEmpty() && bitrate > highestBitrate) {
-                        highestBitrate = bitrate
-                        bestAudioUrl = url
+                for (i in 0 until adaptiveFormats.length()) {
+                    val format = adaptiveFormats.optJSONObject(i) ?: continue
+                    val mimeType = format.optString("mimeType", "")
+                    if (mimeType.startsWith("audio/")) {
+                        val url = format.optString("url")
+                        val bitrate = format.optInt("bitrate", 0)
+                        // Prefer opus or mp4a with high bitrate
+                        if (url.isNotEmpty() && bitrate > highestBitrate) {
+                            highestBitrate = bitrate
+                            bestAudioUrl = url
+                        }
                     }
                 }
+                
+                // Sometimes URL is wrapped in a 'signatureCipher' which we can't easily handle here without a JS engine,
+                // but for many music tracks, the direct URL is available in the Web client.
+                Log.d("YouTubeAudioResolver", "Innertube resolution successful: ${bestAudioUrl != null}")
+                return bestAudioUrl
             }
-
-            return bestAudioUrl
+        } catch (e: Exception) {
+            Log.e("YouTubeAudioResolver", "Innertube resolution exception", e)
+            return null
         }
     }
 
     private fun resolveViaPiped(videoId: String): String? {
         val endpoints = listOf(
             "https://pipedapi.kavin.rocks/streams/$videoId",
-            "https://api.piped.privacydev.net/streams/$videoId"
+            "https://api.piped.privacydev.net/streams/$videoId",
+            "https://piped-api.garudalinux.org/streams/$videoId",
+            "https://api-piped.mha.fi/streams/$videoId",
+            "https://pipedapi.oxen.rocks/streams/$videoId"
         )
 
         for (endpoint in endpoints) {
             try {
                 val request = Request.Builder()
                     .url(endpoint)
-                    .header("User-Agent", "FusionMusic/1.0")
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36")
                     .get()
                     .build()
 
                 httpClient.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) return@use
+                    if (!response.isSuccessful) {
+                        Log.w("YouTubeAudioResolver", "Piped $endpoint error: ${response.code}")
+                        return@use
+                    }
                     val bodyString = response.body?.string() ?: return@use
                     val root = JSONObject(bodyString)
                     val audioStreams = root.optJSONArray("audioStreams") ?: return@use
 
                     var bestUrl: String? = null
-                    var bestBitrate = 0
+                    var highestBitrate = 0
 
                     for (i in 0 until audioStreams.length()) {
                         val stream = audioStreams.optJSONObject(i) ?: continue
                         val url = stream.optString("url")
                         val bitrate = stream.optInt("bitrate", 0)
-                        if (url.isNotEmpty() && bitrate > bestBitrate) {
-                            bestBitrate = bitrate
+                        if (url.isNotEmpty() && bitrate > highestBitrate) {
+                            highestBitrate = bitrate
                             bestUrl = url
                         }
                     }
-                    if (!bestUrl.isNullOrEmpty()) return bestUrl
+                    if (!bestUrl.isNullOrEmpty()) {
+                        Log.d("YouTubeAudioResolver", "Piped resolution successful via $endpoint")
+                        return bestUrl
+                    }
                 }
             } catch (e: Exception) {
-                // Try next
+                Log.w("YouTubeAudioResolver", "Piped resolution failed for $endpoint: ${e.message}")
             }
         }
         return null

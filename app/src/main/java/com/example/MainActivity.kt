@@ -18,7 +18,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -115,25 +115,28 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
     val playerState by viewModel.playerUiState.collectAsState()
     val isScanning by viewModel.isScanning.collectAsState()
     val servicesState by viewModel.servicesState.collectAsState()
+    val youtubeApiKey by viewModel.youtubeApiKey.collectAsState()
+    val accentColor by viewModel.accentColor.collectAsState()
 
     val searchQuery by viewModel.searchQuery.collectAsState()
     val searchFilter by viewModel.searchFilter.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
+    val searchHistory by viewModel.searchHistory.collectAsState()
 
     // Navigation & Sheet Dialog States
     var currentDestination by remember { mutableStateOf(FusionNavDestination.HOME) }
-    var isViewingServices by remember { mutableStateOf(false) }
-    var isFullPlayerExpanded by remember { mutableStateOf(false) }
-    var isQueueSheetExpanded by remember { mutableStateOf(false) }
+    var isViewingServices by remember { mutableStateOf(value = false) }
+    var isFullPlayerExpanded by remember { mutableStateOf(value = false) }
+    var isQueueSheetExpanded by remember { mutableStateOf(value = false) }
 
     var songForPlaylistSelection by remember { mutableStateOf<Song?>(null) }
-    var showCreatePlaylistDialog by remember { mutableStateOf(false) }
+    var showCreatePlaylistDialog by remember { mutableStateOf(value = false) }
 
     Scaffold(
         containerColor = ObsidianDark,
         bottomBar = {
             if (!isViewingServices) {
-                Column {
+                Column(modifier = Modifier.navigationBarsPadding()) {
                     // Mini Player (Only visible if a song is loaded)
                     MiniPlayer(
                         playerState = playerState,
@@ -160,6 +163,8 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
             if (isViewingServices) {
                 ServicesScreen(
                     services = servicesState,
+                    youtubeApiKey = youtubeApiKey,
+                    onUpdateYouTubeApiKey = { viewModel.updateYouTubeApiKey(it) },
                     onToggleService = { source, enabled -> viewModel.toggleExternalService(source, enabled) },
                     onNavigateBack = { isViewingServices = false }
                 )
@@ -183,7 +188,7 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
                             onAddToQueue = { viewModel.addToQueue(it) },
                             onAddToPlaylist = { songForPlaylistSelection = it },
                             onRescan = { viewModel.rescanLocalLibrary() },
-                            onOpenAlbum = { album ->
+                            onOpenAlbum = { _ ->
                                 currentDestination = FusionNavDestination.LIBRARY
                             },
                             onNavigateToServices = { isViewingServices = true }
@@ -215,6 +220,7 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
                             allSongs = songs,
                             isSearchingYouTube = isSearchingYouTube,
                             downloadStates = downloadStates,
+                            searchHistory = searchHistory,
                             onQueryChanged = { viewModel.updateSearchQuery(it) },
                             onFilterChanged = { viewModel.updateSearchFilter(it) },
                             onPlaySong = { song, queue -> viewModel.playSong(song, queue) },
@@ -222,6 +228,7 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
                             onPlayNext = { viewModel.playNext(it) },
                             onAddToQueue = { viewModel.addToQueue(it) },
                             onAddToPlaylist = { songForPlaylistSelection = it },
+                            onClearHistory = { viewModel.clearSearchHistory() },
                             onDownloadSong = { viewModel.startDownload(it) },
                             onCancelDownload = { viewModel.cancelDownload(it) },
                             onDeleteDownload = { viewModel.deleteDownload(it) }
@@ -258,9 +265,10 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
     }
 
     // Full Player Modal Bottom Sheet
-    if (isFullPlayerExpanded && playerState.currentSong != null) {
+    if (isFullPlayerExpanded && (playerState.currentSong != null)) {
         FullPlayerSheet(
             playerState = playerState,
+            accentColor = accentColor,
             onDismiss = { isFullPlayerExpanded = false },
             onTogglePlayPause = { viewModel.togglePlayPause() },
             onSeekTo = { viewModel.seekTo(it) },
@@ -271,7 +279,7 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
             onToggleFavorite = { playerState.currentSong?.let { viewModel.toggleFavorite(it) } },
             onOpenQueue = { isQueueSheetExpanded = true },
             onSelectSleepTimer = { viewModel.setSleepTimer(it) },
-            onSelectEqualizer = { viewModel.setEqualizerPreset(it) }
+            onSelectEqualizer = { viewModel.setEqualizerPreset(it) },
         )
     }
 

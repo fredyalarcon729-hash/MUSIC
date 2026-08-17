@@ -1,7 +1,6 @@
 package com.example.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
@@ -52,7 +51,7 @@ fun FusionBottomNav(
     NavigationBar(
         containerColor = ObsidianDark,
         tonalElevation = 8.dp,
-        modifier = modifier.height(68.dp)
+        modifier = modifier
     ) {
         FusionNavDestination.values().forEach { destination ->
             val isSelected = currentDestination == destination
