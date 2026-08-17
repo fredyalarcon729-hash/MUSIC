@@ -1,0 +1,8 @@
+{
+  "name": "Remix Android App Builder AI",
+  "description": "Create and deploy custom Android applications easily using powerful AI-driven development tools and no-code templates.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
