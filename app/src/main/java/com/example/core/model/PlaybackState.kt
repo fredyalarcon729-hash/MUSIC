@@ -22,7 +22,8 @@ enum class EqualizerPreset(val displayName: String, val bassGain: Float, val mid
     BASS_BOOST("Refuerzo de Graves", 1.6f, 1.0f, 0.9f),
     VOCAL("Vocal / Acústico", 0.9f, 1.4f, 1.2f),
     ELECTRONIC("Electrónica / Dance", 1.5f, 1.1f, 1.4f),
-    ROCK("Rock & Pop", 1.3f, 1.2f, 1.3f)
+    ROCK("Rock & Pop", 1.3f, 1.2f, 1.3f),
+    CUSTOM("Personalizado", 1.0f, 1.0f, 1.0f)
 }
 
 @Immutable
@@ -49,7 +50,12 @@ data class PlayerUiState(
     val pitchSemitones: Int = 0,
     val isVocalReductionEnabled: Boolean = false,
     val vocalReductionStrength: Float = 1.0f,
-    val isKaraokeModeActive: Boolean = false
+    val isKaraokeModeActive: Boolean = false,
+    val isNormalizationEnabled: Boolean = false,
+    val bandLevels: Map<Int, Int> = emptyMap(), // Band index to level in milliBels
+    val bassBoostStrength: Int = 0, // 0 to 1000
+    val virtualizerStrength: Int = 0, // 0 to 1000
+    val volume: Float = 1.0f
 ) {
     val progress: Float
         get() = if (durationMs > 0) (currentPositionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f) else 0f

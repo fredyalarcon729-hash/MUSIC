@@ -5,6 +5,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -29,6 +30,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -42,6 +44,8 @@ import com.example.core.model.Lyrics
 import com.example.core.model.PlayerUiState
 import com.example.core.model.RepeatMode as DomainRepeatMode
 import com.example.ui.theme.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,10 +64,15 @@ fun FullPlayerSheet(
     onOpenQueue: () -> Unit,
     onSelectSleepTimer: (Int?) -> Unit,
     onSelectEqualizer: (EqualizerPreset) -> Unit,
+    onSetBandLevel: (Int, Int) -> Unit,
+    onSetBassBoost: (Int) -> Unit,
+    onSetVirtualizer: (Int) -> Unit,
     onToggleKaraokeMode: (Boolean) -> Unit,
     onSetPitch: (Int) -> Unit,
     onToggleVocalReduction: (Boolean) -> Unit,
-    onSetVocalStrength: (Float) -> Unit
+    onSetVocalStrength: (Float) -> Unit,
+    onToggleNormalization: () -> Unit,
+    onSetVolume: (Float) -> Unit
 ) {
     val currentSong = playerState.currentSong ?: return
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -80,6 +89,14 @@ fun FullPlayerSheet(
     var isDraggingSlider by remember { mutableStateOf(false) }
     var dragSliderValue by remember { mutableFloatStateOf(0f) }
     var showLyrics by remember { mutableStateOf(false) }
+
+    var showVolumeOverlay by remember { mutableStateOf(false) }
+    var volumeOverlayJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    val scope = rememberCoroutineScope()
+    
+    // Fix: Use rememberUpdatedState to avoid capturing stale values in pointerInput
+    val currentVolume by rememberUpdatedState(playerState.volume)
+    val currentOnSetVolume by rememberUpdatedState(onSetVolume)
 
     val currentPositionMs = positionMsProvider()
     val progress = if (playerState.durationMs > 0) (currentPositionMs.toFloat() / playerState.durationMs.toFloat()).coerceIn(0f, 1f) else 0f
@@ -181,13 +198,42 @@ fun FullPlayerSheet(
                         .aspectRatio(1f)
                         .shadow(40.dp, RoundedCornerShape(24.dp), spotColor = animatedAccentColor)
                         .clip(RoundedCornerShape(24.dp))
-                        .border(1.dp, animatedAccentColor.copy(alpha = 0.3f), RoundedCornerShape(24.dp)),
+                        .border(1.dp, animatedAccentColor.copy(alpha = 0.3f), RoundedCornerShape(24.dp))
+                        .pointerInput(Unit) {
+                            detectVerticalDragGestures(
+                                onDragStart = { showVolumeOverlay = true },
+                                onDragEnd = {
+                                    volumeOverlayJob?.cancel()
+                                    volumeOverlayJob = scope.launch {
+                                        delay(1500)
+                                        showVolumeOverlay = false
+                                    }
+                                },
+                                onVerticalDrag = { _, dragAmount ->
+                                    // Use the latest volume value from the updated state
+                                    val delta = -dragAmount / 600f // Slightly less sensitive for better control
+                                    currentOnSetVolume((currentVolume + delta).coerceIn(0f, 1f))
+                                    
+                                    volumeOverlayJob?.cancel()
+                                    showVolumeOverlay = true
+                                }
+                            )
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     if (!currentSong.artworkUri.isNullOrBlank()) {
                         AsyncImage(model = currentSong.artworkUri, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     } else {
                         Icon(Icons.Default.MusicNote, null, tint = animatedAccentColor, modifier = Modifier.size(60.dp))
+                    }
+
+                    // Volume Overlay
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = showVolumeOverlay,
+                        enter = fadeIn() + scaleIn(initialScale = 0.8f),
+                        exit = fadeOut() + scaleOut(targetScale = 0.8f)
+                    ) {
+                        VolumeIndicator(playerState.volume, animatedAccentColor)
                     }
                 }
 
@@ -249,6 +295,7 @@ fun FullPlayerSheet(
                 Row(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp).clip(RoundedCornerShape(20.dp)).background(Color.White.copy(alpha = 0.05f)).padding(16.dp), horizontalArrangement = Arrangement.SpaceAround) {
                     ToolItem(Icons.Default.Timer, if (playerState.sleepTimerMinutesLeft != null) "${playerState.sleepTimerMinutesLeft}m" else "Timer", playerState.sleepTimerMinutesLeft != null, animatedAccentColor) { showTimerDialog = true }
                     ToolItem(Icons.Default.Equalizer, "EQ", true, animatedAccentColor) { showEqDialog = true }
+                    ToolItem(Icons.Default.Tune, "Norm", playerState.isNormalizationEnabled, animatedAccentColor) { onToggleNormalization() }
                     ToolItem(Icons.Default.QueueMusic, "Cola", false, animatedAccentColor) { onOpenQueue() }
                 }
             }
@@ -288,7 +335,15 @@ fun FullPlayerSheet(
 
     // Dialogs...
     if (showTimerDialog) SleepTimerDialog(playerState.sleepTimerMinutesLeft, { showTimerDialog = false }, { onSelectSleepTimer(it); showTimerDialog = false })
-    if (showEqDialog) EqualizerDialog(playerState.equalizerPreset, { showEqDialog = false }, { onSelectEqualizer(it); showEqDialog = false })
+    if (showEqDialog) ProfessionalEqualizerDialog(
+        playerState = playerState,
+        accentColor = animatedAccentColor,
+        onDismiss = { showEqDialog = false },
+        onSetPreset = onSelectEqualizer,
+        onSetBandLevel = onSetBandLevel,
+        onSetBassBoost = onSetBassBoost,
+        onSetVirtualizer = onSetVirtualizer
+    )
 }
 
 @Composable
@@ -515,17 +570,36 @@ fun SleepTimerDialog(currentMinutes: Int?, onDismiss: () -> Unit, onSelect: (Int
 }
 
 @Composable
-fun EqualizerDialog(currentPreset: EqualizerPreset, onDismiss: () -> Unit, onSelect: (EqualizerPreset) -> Unit) {
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Ecualizador") }, text = {
-        Column {
-            EqualizerPreset.values().forEach { preset ->
-                TextItem(preset.displayName, currentPreset == preset) { onSelect(preset) }
-            }
-        }
-    }, confirmButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } }, containerColor = ObsidianSurfaceVariant)
+fun TextItem(label: String, isSelected: Boolean, onClick: () -> Unit) {
+    Text(label, color = if (isSelected) Color.White else TextPrimary, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, modifier = Modifier.fillMaxWidth().clickable { onClick() }.padding(12.dp))
 }
 
 @Composable
-fun TextItem(label: String, isSelected: Boolean, onClick: () -> Unit) {
-    Text(label, color = if (isSelected) Color.White else TextPrimary, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, modifier = Modifier.fillMaxWidth().clickable { onClick() }.padding(12.dp))
+fun VolumeIndicator(volume: Float, accentColor: Color) {
+    Box(
+        modifier = Modifier
+            .size(100.dp)
+            .clip(CircleShape)
+            .background(Color.Black.copy(alpha = 0.6f))
+            .border(2.dp, accentColor.copy(alpha = 0.5f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                imageVector = when {
+                    volume > 0.6f -> Icons.Default.VolumeUp
+                    volume > 0.1f -> Icons.Default.VolumeDown
+                    else -> Icons.Default.VolumeMute
+                },
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(32.dp)
+            )
+            Text(
+                text = "${(volume * 100).toInt()}%",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = Color.White
+            )
+        }
+    }
 }

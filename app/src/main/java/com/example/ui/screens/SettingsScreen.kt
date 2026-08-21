@@ -56,7 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.core.model.EqualizerPreset
 import com.example.core.model.PlayerUiState
-import com.example.ui.player.EqualizerDialog
+import com.example.ui.player.ProfessionalEqualizerDialog
 import com.example.ui.player.SleepTimerDialog
 import com.example.ui.theme.NeonCyan
 import com.example.ui.theme.NeonPurpleLight
@@ -76,6 +76,9 @@ fun SettingsScreen(
     themeMode: String,
     onRescan: () -> Unit,
     onSelectEqualizer: (EqualizerPreset) -> Unit,
+    onSetBandLevel: (Int, Int) -> Unit,
+    onSetBassBoost: (Int) -> Unit,
+    onSetVirtualizer: (Int) -> Unit,
     onSelectSleepTimer: (Int?) -> Unit,
     onToggleSkipSilence: (Boolean) -> Unit,
     onSetThemeMode: (String) -> Unit,
@@ -409,13 +412,14 @@ fun SettingsScreen(
     }
 
     if (showEqDialog) {
-        EqualizerDialog(
-            currentPreset = playerState.equalizerPreset,
+        ProfessionalEqualizerDialog(
+            playerState = playerState,
+            accentColor = NeonCyan,
             onDismiss = { showEqDialog = false },
-            onSelect = {
-                onSelectEqualizer(it)
-                showEqDialog = false
-            }
+            onSetPreset = onSelectEqualizer,
+            onSetBandLevel = onSetBandLevel,
+            onSetBassBoost = onSetBassBoost,
+            onSetVirtualizer = onSetVirtualizer
         )
     }
 

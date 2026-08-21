@@ -2,6 +2,9 @@ package com.example.player
 
 import android.content.Context
 import android.content.Intent
+import android.media.audiofx.BassBoost
+import android.media.audiofx.Equalizer
+import android.media.audiofx.Virtualizer
 import android.net.Uri
 import android.util.Log
 import androidx.media3.common.AudioAttributes
@@ -54,10 +57,15 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
     private var sleepTimerJob: Job? = null
     private var lyricsFetchJob: Job? = null
     
+    private var equalizer: Equalizer? = null
+    private var bassBoost: BassBoost? = null
+    private var virtualizer: Virtualizer? = null
+
     private val youTubeResolver = YouTubeAudioResolver(applicationContext)
     private val lyricsResolver = LyricsResolver()
 
     private val vocalProcessor = VocalRemovalProcessor()
+    private val normalizationProcessor = VolumeNormalizerProcessor()
 
     val exoPlayer: ExoPlayer by lazy {
         val audioAttributes = AudioAttributes.Builder()
@@ -74,7 +82,7 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
                 return DefaultAudioSink.Builder(context)
                     .setEnableFloatOutput(enableFloatOutput)
                     .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
-                    .setAudioProcessors(arrayOf(vocalProcessor))
+                    .setAudioProcessors(arrayOf(vocalProcessor, normalizationProcessor))
                     .build()
             }
         }
@@ -84,6 +92,7 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
             .setHandleAudioBecomingNoisy(true)
             .build().apply {
                 addListener(playerListener)
+                _uiState.update { it.copy(volume = volume) }
             }
     }
 
@@ -121,10 +130,14 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
             }
 
             _uiState.update {
+                val newSessionId = if (exoPlayer.audioSessionId != C.AUDIO_SESSION_ID_UNSET) exoPlayer.audioSessionId else 0
+                if (newSessionId != 0 && newSessionId != it.audioSessionId) {
+                    updateAudioEffects(newSessionId)
+                }
                 it.copy(
                     isBuffering = isBuffering,
                     durationMs = if (duration > 0) duration else it.durationMs,
-                    audioSessionId = if (exoPlayer.audioSessionId != C.AUDIO_SESSION_ID_UNSET) exoPlayer.audioSessionId else 0
+                    audioSessionId = newSessionId
                 )
             }
 
@@ -191,6 +204,17 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
 
     fun setKaraokeModeActive(active: Boolean) {
         _uiState.update { it.copy(isKaraokeModeActive = active) }
+    }
+
+    fun setNormalizationEnabled(enabled: Boolean) {
+        normalizationProcessor.setEnabled(enabled)
+        _uiState.update { it.copy(isNormalizationEnabled = enabled) }
+    }
+
+    fun setVolume(volume: Float) {
+        val clamped = volume.coerceIn(0f, 1f)
+        exoPlayer.volume = clamped
+        _uiState.update { it.copy(volume = clamped) }
     }
 
     fun playSong(song: Song, queue: List<Song> = listOf(song), startIndex: Int = queue.indexOf(song).coerceAtLeast(0)) {
@@ -361,6 +385,88 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
 
     fun setEqualizerPreset(preset: EqualizerPreset) {
         _uiState.update { it.copy(equalizerPreset = preset) }
+        applyEqualizerPreset(preset)
+    }
+
+    fun setBandLevel(band: Int, level: Int) {
+        try {
+            equalizer?.setBandLevel(band.toShort(), level.toShort())
+            val currentLevels = _uiState.value.bandLevels.toMutableMap()
+            currentLevels[band] = level
+            _uiState.update { it.copy(bandLevels = currentLevels, equalizerPreset = EqualizerPreset.CUSTOM) }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting band level", e)
+        }
+    }
+
+    fun setBassBoost(strength: Int) {
+        try {
+            bassBoost?.setStrength(strength.toShort())
+            _uiState.update { it.copy(bassBoostStrength = strength) }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting bass boost", e)
+        }
+    }
+
+    fun setVirtualizer(strength: Int) {
+        try {
+            virtualizer?.setStrength(strength.toShort())
+            _uiState.update { it.copy(virtualizerStrength = strength) }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting virtualizer", e)
+        }
+    }
+
+    private fun updateAudioEffects(sessionId: Int) {
+        try {
+            equalizer?.release()
+            bassBoost?.release()
+            virtualizer?.release()
+
+            equalizer = Equalizer(0, sessionId).apply { enabled = true }
+            bassBoost = BassBoost(0, sessionId).apply { enabled = true }
+            virtualizer = Virtualizer(0, sessionId).apply { enabled = true }
+
+            // Restore state
+            val state = _uiState.value
+            state.bandLevels.forEach { (band, level) ->
+                equalizer?.setBandLevel(band.toShort(), level.toShort())
+            }
+            bassBoost?.setStrength(state.bassBoostStrength.toShort())
+            virtualizer?.setStrength(state.virtualizerStrength.toShort())
+            
+            if (state.equalizerPreset != EqualizerPreset.CUSTOM) {
+                applyEqualizerPreset(state.equalizerPreset)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initializing audio effects", e)
+        }
+    }
+
+    private fun applyEqualizerPreset(preset: EqualizerPreset) {
+        if (preset == EqualizerPreset.CUSTOM) return
+        val eq = equalizer ?: return
+        try {
+            val numBands = eq.numberOfBands.toInt()
+            val minLevel = eq.bandLevelRange[0]
+            val maxLevel = eq.bandLevelRange[1]
+            val range = (maxLevel - minLevel).toFloat()
+
+            for (i in 0 until numBands) {
+                // Map bassGain, midGain, trebleGain to bands
+                val gain = when {
+                    i < numBands / 3 -> preset.bassGain
+                    i < 2 * numBands / 3 -> preset.midGain
+                    else -> preset.trebleGain
+                }
+                // Normalize gain 1.0 -> 0dB, >1.0 -> boost, <1.0 -> cut
+                val level = (minLevel + (range * (gain / 2.0f))).toInt()
+                    .coerceIn(minLevel.toInt(), maxLevel.toInt())
+                eq.setBandLevel(i.toShort(), level.toShort())
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error applying preset", e)
+        }
     }
 
     private fun handlePlaybackError() {

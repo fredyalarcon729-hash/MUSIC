@@ -306,6 +306,9 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
     fun clearQueue() = playerManager.clearQueue()
     fun setSleepTimer(minutes: Int?) = playerManager.setSleepTimer(minutes)
     fun setEqualizerPreset(preset: EqualizerPreset) = playerManager.setEqualizerPreset(preset)
+    fun setBandLevel(band: Int, level: Int) = playerManager.setBandLevel(band, level)
+    fun setBassBoost(strength: Int) = playerManager.setBassBoost(strength)
+    fun setVirtualizer(strength: Int) = playerManager.setVirtualizer(strength)
 
     fun setSkipSilenceEnabled(enabled: Boolean) = playerManager.setSkipSilenceEnabled(enabled)
 
@@ -320,6 +323,13 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
     fun setVocalReductionStrength(strength: Float) = playerManager.setVocalReductionStrength(strength)
 
     fun setKaraokeModeActive(active: Boolean) = playerManager.setKaraokeModeActive(active)
+
+    fun toggleNormalization() {
+        val next = !playerUiState.value.isNormalizationEnabled
+        playerManager.setNormalizationEnabled(next)
+    }
+
+    fun setVolume(volume: Float) = playerManager.setVolume(volume)
 
     // Downloads
     fun startDownload(song: Song) {

@@ -319,6 +319,9 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
                             themeMode = themeMode,
                             onRescan = onRescan,
                             onSelectEqualizer = { viewModel.setEqualizerPreset(it) },
+                            onSetBandLevel = { band, level -> viewModel.setBandLevel(band, level) },
+                            onSetBassBoost = { strength -> viewModel.setBassBoost(strength) },
+                            onSetVirtualizer = { strength -> viewModel.setVirtualizer(strength) },
                             onSelectSleepTimer = { viewModel.setSleepTimer(it) },
                             onToggleSkipSilence = { viewModel.setSkipSilenceEnabled(it) },
                             onSetThemeMode = { viewModel.updateThemeMode(it) },
@@ -347,10 +350,15 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
             onOpenQueue = { isQueueSheetExpanded = true },
             onSelectSleepTimer = { viewModel.setSleepTimer(it) },
             onSelectEqualizer = { viewModel.setEqualizerPreset(it) },
+            onSetBandLevel = { band, level -> viewModel.setBandLevel(band, level) },
+            onSetBassBoost = { strength -> viewModel.setBassBoost(strength) },
+            onSetVirtualizer = { strength -> viewModel.setVirtualizer(strength) },
             onToggleKaraokeMode = { viewModel.setKaraokeModeActive(it) },
             onSetPitch = { viewModel.setPitchSemitones(it) },
             onToggleVocalReduction = { viewModel.setVocalReductionEnabled(it) },
-            onSetVocalStrength = { viewModel.setVocalReductionStrength(it) }
+            onSetVocalStrength = { viewModel.setVocalReductionStrength(it) },
+            onToggleNormalization = { viewModel.toggleNormalization() },
+            onSetVolume = { viewModel.setVolume(it) }
         )
     }
 
