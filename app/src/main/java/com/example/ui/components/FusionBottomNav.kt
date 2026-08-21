@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -38,6 +39,7 @@ enum class FusionNavDestination(
     HOME("home", "Inicio", Icons.Default.Home, "nav_home"),
     LIBRARY("library", "Biblioteca", Icons.Default.LibraryMusic, "nav_library"),
     SEARCH("search", "Buscar", Icons.Default.Search, "nav_search"),
+    STATS("stats", "ADN", Icons.Default.Psychology, "nav_stats"),
     PLAYLISTS("playlists", "Playlists", Icons.Default.QueueMusic, "nav_playlists"),
     SETTINGS("settings", "Ajustes", Icons.Default.Settings, "nav_settings")
 }

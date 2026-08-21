@@ -1,7 +1,9 @@
-- [x] Implement robust YouTube extraction (Web Remix client)
-    - [x] Update `resolveViaInnertube` configuration
-    - [x] Expand Piped/Invidious fallback list
-    - [x] Add browser-like headers (Origin, Referer)
-- [x] Verification
-    - [x] Build & Deploy
-    - [x] Verify real audio playback in emulator
+- [ ] Simplificación y Estabilización de Audio (v11.0)
+    - [ ] Restaurar motor único `exoPlayer` en `FusionPlayerManager.kt`
+    - [ ] Eliminar toda la lógica Ping-Pong y sistema dual
+    - [ ] Simplificar `skipToNext` para salto instantáneo
+- [ ] Limpieza de UI y Servicio
+    - [ ] Quitar controles de Crossfade en `SettingsScreen.kt`
+    - [ ] Restaurar enlace simple en `FusionMediaService.kt`
+- [ ] Verificación Final
+    - [ ] Confirmar estabilidad total y latencia mínima

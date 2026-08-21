@@ -335,7 +335,7 @@ fun PlaylistsScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     LazyColumn(modifier = Modifier.height(300.dp)) {
-                        items(playlistSongs) { song ->
+                        items(playlistSongs, key = { it.id }) { song ->
                             SongListItem(
                                 song = song,
                                 isPlaying = playerState.isPlaying && playerState.currentSong?.id == song.id,

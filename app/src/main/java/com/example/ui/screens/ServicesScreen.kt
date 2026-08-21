@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Hub
@@ -30,6 +32,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,10 +52,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.example.core.auth.AuthManager
 import com.example.core.model.MusicSource
 import com.example.core.source.ExternalServiceDescriptor
 import com.example.ui.theme.NeonCyan
@@ -70,12 +77,36 @@ import com.example.ui.theme.TextTertiary
 fun ServicesScreen(
     services: List<ExternalServiceDescriptor>,
     youtubeApiKey: String,
+    googleClientId: String,
+    userSession: AuthManager.UserSession?,
     onUpdateYouTubeApiKey: (String) -> Unit,
+    onUpdateGoogleClientId: (String) -> Unit,
     onToggleService: (MusicSource, Boolean) -> Unit,
+    onSignIn: (android.content.Context, String?) -> Unit,
+    onSignOut: () -> Unit,
+    onGetDiagnosticInfo: () -> AuthManager.DiagnosticInfo,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showApiKeyDialog by remember { mutableStateOf(false) }
+    var showDiagnosticDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    if (showApiKeyDialog) {
+        YouTubeApiKeyDialog(
+            currentKey = youtubeApiKey,
+            currentClientId = googleClientId,
+            userSession = userSession,
+            onDismiss = { showApiKeyDialog = false },
+            onSave = { key, clientId ->
+                onUpdateYouTubeApiKey(key)
+                onUpdateGoogleClientId(clientId)
+                showApiKeyDialog = false
+            },
+            onSignIn = { clientId -> onSignIn(context, clientId) },
+            onSignOut = onSignOut
+        )
+    }
 
     Column(
         modifier = modifier
@@ -110,11 +141,18 @@ fun ServicesScreen(
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                     color = TextPrimary
                 )
-                Text(
-                    text = "Arquitectura modular de fuentes de audio",
-                    style = MaterialTheme.typography.bodyMedium.copy(color = NeonCyan),
-                    fontSize = 12.sp
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable { showDiagnosticDialog = true }
+                ) {
+                    Text(
+                        text = "Arquitectura modular",
+                        style = MaterialTheme.typography.bodyMedium.copy(color = NeonCyan),
+                        fontSize = 12.sp
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(Icons.Default.Info, null, tint = NeonCyan.copy(alpha = 0.6f), modifier = Modifier.size(14.dp))
+                }
             }
         }
 
@@ -125,6 +163,77 @@ fun ServicesScreen(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            // User Session Header Block
+            item(key = "user_profile_header") {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = if (userSession != null) NeonCyan.copy(alpha = 0.05f) else ObsidianSurfaceVariant),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp, 
+                        if (userSession != null) NeonCyan.copy(alpha = 0.3f) else ObsidianBorder
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (userSession != null) {
+                            AsyncImage(
+                                model = userSession.photoUrl,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(ObsidianCard),
+                                contentScale = ContentScale.Crop
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = userSession.displayName ?: "Usuario Conectado",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = TextPrimary
+                                )
+                                Text(
+                                    text = userSession.email ?: "Google Auth Activo",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = NeonCyan
+                                )
+                            }
+                            IconButton(onClick = onSignOut) {
+                                Icon(Icons.Default.Lock, "Cerrar Sesión", tint = Color(0xFFFF4D4D))
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(ObsidianCard),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.AccountCircle, null, tint = TextTertiary, modifier = Modifier.size(32.dp))
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Sin cuenta vinculada",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = TextPrimary
+                                )
+                                Text(
+                                    text = "Conecta Google para mejorar YouTube",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextSecondary
+                                )
+                            }
+                            TextButton(onClick = { showApiKeyDialog = true }) {
+                                Text("CONECTAR", color = NeonCyan, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+
             // Architecture Info Box
             item {
                 Card(
@@ -157,13 +266,14 @@ fun ServicesScreen(
 
             items(services, key = { it.source.name }) { service ->
                 val badgeColor = Color(service.badgeColorHex)
+                val isYouTube = service.source == MusicSource.YOUTUBE
 
                 Surface(
                     shape = RoundedCornerShape(16.dp),
                     color = ObsidianSurface,
                     border = androidx.compose.foundation.BorderStroke(
                         1.dp,
-                        if (service.isConnected) badgeColor.copy(alpha = 0.5f) else ObsidianBorder
+                        if (service.isConnected || (isYouTube && userSession != null)) badgeColor.copy(alpha = 0.5f) else ObsidianBorder
                     ),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -181,14 +291,23 @@ fun ServicesScreen(
                                         .background(badgeColor)
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
-                                Text(
-                                    text = service.title,
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 16.sp
-                                    ),
-                                    color = TextPrimary
-                                )
+                                Column {
+                                    Text(
+                                        text = service.title,
+                                        style = MaterialTheme.typography.titleMedium.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 16.sp
+                                        ),
+                                        color = TextPrimary
+                                    )
+                                    if (isYouTube && userSession != null) {
+                                        Text(
+                                            text = "Sesión activa: ${userSession.email}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = NeonCyan
+                                        )
+                                    }
+                                }
                             }
 
                         if (service.source == MusicSource.LOCAL) {
@@ -207,7 +326,7 @@ fun ServicesScreen(
                             }
                         } else {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (service.source == MusicSource.YOUTUBE) {
+                                if (isYouTube) {
                                     IconButton(
                                         onClick = { showApiKeyDialog = true },
                                         modifier = Modifier.size(32.dp).padding(end = 4.dp)
@@ -277,10 +396,44 @@ fun ServicesScreen(
     if (showApiKeyDialog) {
         YouTubeApiKeyDialog(
             currentKey = youtubeApiKey,
+            currentClientId = googleClientId,
+            userSession = userSession,
             onDismiss = { showApiKeyDialog = false },
-            onSave = {
-                onUpdateYouTubeApiKey(it)
+            onSave = { key, clientId ->
+                onUpdateYouTubeApiKey(key)
+                onUpdateGoogleClientId(clientId)
                 showApiKeyDialog = false
+            },
+            onSignIn = { clientId -> onSignIn(context, clientId) },
+            onSignOut = onSignOut
+        )
+    }
+
+    if (showDiagnosticDialog) {
+        val info = onGetDiagnosticInfo()
+        AlertDialog(
+            onDismissRequest = { showDiagnosticDialog = false },
+            containerColor = ObsidianSurface,
+            title = { Text("Datos de Diagnóstico", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text("Nombre del Paquete:", color = NeonCyan, style = MaterialTheme.typography.labelSmall)
+                    Text(info.packageName, color = TextPrimary, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("Huella Digital SHA-1:", color = NeonCyan, style = MaterialTheme.typography.labelSmall)
+                    Text(info.sha1, color = TextPrimary, style = MaterialTheme.typography.bodySmall)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "Copia el SHA-1 y asegúrate de que sea idéntico al que figura en el ID de Android de tu consola Google Cloud.",
+                        color = TextSecondary,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDiagnosticDialog = false }) {
+                    Text("CERRAR", color = NeonCyan)
+                }
             }
         )
     }
@@ -289,33 +442,93 @@ fun ServicesScreen(
 @Composable
 fun YouTubeApiKeyDialog(
     currentKey: String,
+    currentClientId: String,
+    userSession: AuthManager.UserSession?,
     onDismiss: () -> Unit,
-    onSave: (String) -> Unit
+    onSave: (String, String) -> Unit,
+    onSignIn: (String) -> Unit,
+    onSignOut: () -> Unit
 ) {
     var key by remember { mutableStateOf(currentKey) }
+    var clientId by remember { mutableStateOf(currentClientId) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = ObsidianSurface,
         title = {
             Text(
-                "YouTube Data API Key",
+                "YouTube & Google Auth",
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = TextPrimary
             )
         },
         text = {
             Column {
-                Text(
-                    "Introduce tu API Key oficial de Google Cloud Console para habilitar la búsqueda nativa de YouTube v3.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary
-                )
+                if (userSession != null) {
+                    // Profile info inside dialog (secondary verification)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(ObsidianCard)
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        AsyncImage(
+                            model = userSession.photoUrl,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = userSession.email ?: "Autenticado",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = NeonCyan,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(onClick = onSignOut) {
+                            Text("SALIR", color = Color(0xFFFF4D4D), fontSize = 10.sp)
+                        }
+                    }
+                } else {
+                    Surface(
+                        onClick = { onSignIn(clientId) },
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color.White,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(Icons.Default.AccountCircle, null, tint = Color.Black)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("CONECTAR CON GOOGLE", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(color = ObsidianBorder, thickness = 1.dp)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    "Configuración técnica de API",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TextPrimary,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                
                 OutlinedTextField(
                     value = key,
                     onValueChange = { key = it },
-                    label = { Text("API Key") },
+                    label = { Text("YouTube API Key (v3)") },
+                    placeholder = { Text("AIza...") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -325,16 +538,38 @@ fun YouTubeApiKeyDialog(
                         unfocusedBorderColor = ObsidianBorder
                     )
                 )
+                Spacer(modifier = Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = clientId,
+                    onValueChange = { clientId = it },
+                    label = { Text("OAuth Client ID (Web)") },
+                    placeholder = { Text("...apps.googleusercontent.com") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        focusedBorderColor = NeonCyan,
+                        unfocusedBorderColor = ObsidianBorder
+                    )
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "El Client ID es obligatorio para el inicio de sesión con Google.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextTertiary,
+                    fontSize = 10.sp
+                )
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(key) }) {
-                Text("Guardar", color = NeonCyan, fontWeight = FontWeight.Bold)
+            TextButton(onClick = { onSave(key, clientId) }) {
+                Text("GUARDAR", color = NeonCyan, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancelar", color = TextTertiary)
+                Text("Cerrar", color = TextTertiary)
             }
         }
     )

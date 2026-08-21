@@ -13,7 +13,8 @@ data class Lyrics(
     companion object {
         fun parseLrc(lrc: String): List<LyricLine> {
             val lines = mutableListOf<LyricLine>()
-            val regex = Regex("\\[(\\d{2}):(\\d{2})\\.(\\d{2,3})\\](.*)")
+            // Support formats like [00:00.00], [00:00.000], [00:00:00], etc.
+            val regex = Regex("\\[(\\d{2}):(\\d{2})[.:](\\d{2,3})\\](.*)")
             lrc.lines().forEach { line ->
                 val match = regex.find(line)
                 if (match != null) {
@@ -28,6 +29,7 @@ data class Lyrics(
                     }
                 }
             }
+            // Ensure correct order and handle multiple lines at same timestamp if any
             return lines.sortedBy { it.timeMs }
         }
     }

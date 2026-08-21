@@ -1,17 +1,22 @@
 package com.example.core.model
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 enum class RepeatMode {
     OFF,
     ALL,
     ONE
 }
 
+@Immutable
 enum class AudioQuality(val label: String, val bitrate: String) {
     STANDARD("Estándar", "128 kbps"),
     HIGH("Alta Calidad", "256 kbps"),
     ULTRA("Ultra Lossless", "FLAC / 320 kbps")
 }
 
+@Immutable
 enum class EqualizerPreset(val displayName: String, val bassGain: Float, val midGain: Float, val trebleGain: Float) {
     FLAT("Plano", 1.0f, 1.0f, 1.0f),
     BASS_BOOST("Refuerzo de Graves", 1.6f, 1.0f, 0.9f),
@@ -20,6 +25,7 @@ enum class EqualizerPreset(val displayName: String, val bassGain: Float, val mid
     ROCK("Rock & Pop", 1.3f, 1.2f, 1.3f)
 }
 
+@Immutable
 data class PlayerUiState(
     val currentSong: Song? = null,
     val isPlaying: Boolean = false,
@@ -35,7 +41,15 @@ data class PlayerUiState(
     val playbackSpeed: Float = 1.0f,
     val equalizerPreset: EqualizerPreset = EqualizerPreset.FLAT,
     val audioQuality: AudioQuality = AudioQuality.HIGH,
-    val currentLyrics: Lyrics? = null
+    val currentLyrics: Lyrics? = null,
+    val isSkipSilenceEnabled: Boolean = false,
+    val crossfadeDuration: Int = 0, // In seconds, 0 means disabled
+    val isMezclaProEnabled: Boolean = false,
+    val audioSessionId: Int = 0,
+    val pitchSemitones: Int = 0,
+    val isVocalReductionEnabled: Boolean = false,
+    val vocalReductionStrength: Float = 1.0f,
+    val isKaraokeModeActive: Boolean = false
 ) {
     val progress: Float
         get() = if (durationMs > 0) (currentPositionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f) else 0f

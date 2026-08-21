@@ -63,6 +63,12 @@ interface MusicDao {
     @Query("SELECT songId FROM playback_history GROUP BY songId ORDER BY COUNT(*) DESC LIMIT :limit")
     fun getMostPlayedSongIds(limit: Int = 20): Flow<List<String>>
 
+    @Query("SELECT SUM(durationPlayedMs) FROM playback_history")
+    fun getTotalListeningTimeMs(): Flow<Long?>
+
+    @Query("SELECT * FROM playback_history")
+    fun getAllHistory(): Flow<List<HistoryEntity>>
+
     // Downloaded Songs
     @Query("SELECT * FROM downloaded_songs ORDER BY downloadedAt DESC")
     fun getAllDownloadedSongs(): Flow<List<DownloadedSongEntity>>

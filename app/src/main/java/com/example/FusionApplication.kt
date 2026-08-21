@@ -4,6 +4,7 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
+import com.example.core.auth.AuthManager
 import com.example.core.source.ConfigManager
 import com.example.core.source.ExternalServicesManager
 import com.example.core.source.LocalMusicSourceProvider
@@ -40,6 +41,9 @@ class FusionApplication : Application() {
     lateinit var musicRepository: MusicRepository
         private set
 
+    lateinit var authManager: AuthManager
+        private set
+
     lateinit var playerManager: FusionPlayerManager
         private set
 
@@ -65,6 +69,7 @@ class FusionApplication : Application() {
             downloadManager = downloadManager,
             youtubeProvider = youTubeProvider
         )
+        authManager = AuthManager(this)
         playerManager = FusionPlayerManager.getInstance(this)
 
         playerManager.setOnSongCompletedCallback { song ->
@@ -79,7 +84,7 @@ class FusionApplication : Application() {
             val channel = NotificationChannel(
                 "fusion_playback_channel",
                 "Reproducción Fusion Music",
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = "Notificación de control de reproducción de música"
                 setShowBadge(false)

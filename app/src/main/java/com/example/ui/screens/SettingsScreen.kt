@@ -31,7 +31,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -69,6 +72,7 @@ fun SettingsScreen(
     onRescan: () -> Unit,
     onSelectEqualizer: (EqualizerPreset) -> Unit,
     onSelectSleepTimer: (Int?) -> Unit,
+    onToggleSkipSilence: (Boolean) -> Unit,
     onNavigateToServices: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -179,6 +183,49 @@ fun SettingsScreen(
                     subtitle = "${playerState.audioQuality.label} (${playerState.audioQuality.bitrate})",
                     onClick = {}
                 )
+            }
+
+            // Audio Pro Section
+            item {
+                Text(
+                    text = "AJUSTES DE AUDIO PRO",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        color = NeonCyan,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    ),
+                    modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+                )
+            }
+
+            item {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = ObsidianSurface,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Omitir Silencios", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                                Text("Recorta silencios al inicio/fin", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                            }
+                            Switch(
+                                checked = playerState.isSkipSilenceEnabled,
+                                onCheckedChange = onToggleSkipSilence,
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.Black,
+                                    checkedTrackColor = NeonCyan
+                                )
+                            )
+                        }
+                    }
+                }
             }
 
             // Media Scanning Section

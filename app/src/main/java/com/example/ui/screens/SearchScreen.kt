@@ -217,7 +217,7 @@ fun SearchScreen(
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 if (searchHistory.isNotEmpty()) {
-                    item {
+                    item(key = "history_header") {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -237,7 +237,7 @@ fun SearchScreen(
                         }
                     }
 
-                    item {
+                    item(key = "history_flow") {
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -262,7 +262,7 @@ fun SearchScreen(
                     }
                 }
 
-                item {
+                item(key = "categories_header") {
                     Text(
                         text = "Explora Categorías",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
@@ -270,7 +270,7 @@ fun SearchScreen(
                     )
                 }
 
-                item {
+                item(key = "categories_tags") {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -297,7 +297,7 @@ fun SearchScreen(
                     }
                 }
 
-                item {
+                item(key = "search_footer") {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -341,7 +341,7 @@ fun SearchScreen(
                 ) {
                     // 1. Local Songs matches
                     if (searchResults.songs.isNotEmpty()) {
-                        item {
+                        item(key = "local_songs_header") {
                             Text(
                                 text = "Biblioteca Local (${searchResults.songs.size})",
                                 style = MaterialTheme.typography.titleMedium.copy(
@@ -351,7 +351,7 @@ fun SearchScreen(
                                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
                             )
                         }
-                        items(searchResults.songs) { song ->
+                        items(searchResults.songs, key = { it.id }) { song ->
                             SongListItem(
                                 song = song,
                                 isPlaying = playerState.isPlaying && playerState.currentSong?.id == song.id,
@@ -372,7 +372,7 @@ fun SearchScreen(
 
                     // 2. YouTube Online Songs
                     if (searchResults.youTubeSongs.isNotEmpty()) {
-                        item {
+                        item(key = "yt_songs_header") {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -405,7 +405,7 @@ fun SearchScreen(
                             }
                         }
 
-                        items(searchResults.youTubeSongs) { song ->
+                        items(searchResults.youTubeSongs, key = { it.id }) { song ->
                             SongListItem(
                                 song = song,
                                 isPlaying = playerState.isPlaying && playerState.currentSong?.id == song.id,
@@ -426,7 +426,7 @@ fun SearchScreen(
 
                     // 3. Artists matches
                     if (searchResults.artists.isNotEmpty()) {
-                        item {
+                        item(key = "artists_header") {
                             Text(
                                 text = "Artistas (${searchResults.artists.size})",
                                 style = MaterialTheme.typography.titleMedium.copy(
@@ -436,7 +436,7 @@ fun SearchScreen(
                                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
                             )
                         }
-                        items(searchResults.artists) { artist ->
+                        items(searchResults.artists, key = { it.id }) { artist ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -464,7 +464,7 @@ fun SearchScreen(
 
                     // 4. Albums matches
                     if (searchResults.albums.isNotEmpty()) {
-                        item {
+                        item(key = "albums_header") {
                             Text(
                                 text = "Álbumes (${searchResults.albums.size})",
                                 style = MaterialTheme.typography.titleMedium.copy(
@@ -474,7 +474,7 @@ fun SearchScreen(
                                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
                             )
                         }
-                        items(searchResults.albums) { album ->
+                        items(searchResults.albums, key = { it.id }) { album ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()

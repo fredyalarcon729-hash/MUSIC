@@ -3,6 +3,7 @@ package com.example.ui
 import android.app.Application
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
+import android.util.Log
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -23,9 +24,12 @@ import com.example.core.source.ExternalServiceDescriptor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -60,6 +64,7 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
     val servicesManager = app.servicesManager
     val downloadManager = app.downloadManager
     val configManager = app.configManager
+    val authManager = app.authManager
 
     val isScanning: StateFlow<Boolean> = repository.isScanning
 
@@ -87,6 +92,23 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
     private val _youtubeApiKey = MutableStateFlow(configManager.getYouTubeApiKey() ?: "")
     val youtubeApiKey: StateFlow<String> = _youtubeApiKey.asStateFlow()
 
+    private val _googleClientId = MutableStateFlow(configManager.getGoogleClientId() ?: "")
+    val googleClientId: StateFlow<String> = _googleClientId.asStateFlow()
+
+    // UI Events (errors, toasts)
+    private val _eventFlow = MutableSharedFlow<String>()
+    val eventFlow: SharedFlow<String> = _eventFlow.asSharedFlow()
+
+    // Statistics
+    val totalListeningTimeMs: StateFlow<Long> = repository.totalListeningTimeMs
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
+
+    val topArtists: StateFlow<List<Pair<String, Int>>> = repository.topArtistsFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val hourlyActivity: StateFlow<Map<Int, Int>> = repository.hourlyActivityFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
     // Dynamic Theming
     private val _accentColor = MutableStateFlow(Color(0xFF00E5FF)) // Default NeonCyan
     val accentColor: StateFlow<Color> = _accentColor.asStateFlow()
@@ -94,6 +116,10 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
     // Search History
     private val _searchHistory = MutableStateFlow(configManager.getSearchHistory())
     val searchHistory: StateFlow<List<String>> = _searchHistory.asStateFlow()
+
+    val userSession = authManager.userState
+
+    fun getDiagnosticInfo() = authManager.getDiagnosticInfo()
 
     init {
         // Observe player changes to update theme
@@ -106,13 +132,14 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
 
     private fun updateThemeForCurrentSong() {
         val song = playerUiState.value.currentSong
-        if (song?.artworkUri.isNullOrBlank()) {
+        val artworkUri = song?.artworkUri
+        if (artworkUri.isNullOrBlank()) {
             _accentColor.value = Color(0xFF00E5FF)
             return
         }
 
         viewModelScope.launch {
-            val bitmap = loadBitmap(song.artworkUri!!)
+            val bitmap = loadBitmap(artworkUri)
             if (bitmap != null) {
                 val palette = Palette.from(bitmap).generate()
                 val vibrant = palette.getVibrantColor(0xFF00E5FF.toInt())
@@ -125,12 +152,10 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
         val loader = ImageLoader(app)
         val request = ImageRequest.Builder(app)
             .data(uri)
-            .allowHardware(false) // Required for Palette
+            .allowHardware(false)
             .build()
         val result = loader.execute(request)
-        if (result is SuccessResult) {
-            (result.drawable as? BitmapDrawable)?.bitmap
-        } else null
+        if (result is SuccessResult) (result.drawable as? BitmapDrawable)?.bitmap else null
     }
 
     // Favorites
@@ -276,6 +301,20 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
     fun setSleepTimer(minutes: Int?) = playerManager.setSleepTimer(minutes)
     fun setEqualizerPreset(preset: EqualizerPreset) = playerManager.setEqualizerPreset(preset)
 
+    fun setSkipSilenceEnabled(enabled: Boolean) = playerManager.setSkipSilenceEnabled(enabled)
+
+    fun setCrossfadeDuration(seconds: Int) = playerManager.setCrossfadeDuration(seconds)
+
+    fun setMezclaProEnabled(enabled: Boolean) = playerManager.setMezclaProEnabled(enabled)
+
+    fun setPitchSemitones(semitones: Int) = playerManager.setPitchSemitones(semitones)
+
+    fun setVocalReductionEnabled(enabled: Boolean) = playerManager.setVocalReductionEnabled(enabled)
+
+    fun setVocalReductionStrength(strength: Float) = playerManager.setVocalReductionStrength(strength)
+
+    fun setKaraokeModeActive(active: Boolean) = playerManager.setKaraokeModeActive(active)
+
     // Downloads
     fun startDownload(song: Song) {
         repository.startDownload(song)
@@ -343,6 +382,42 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
     fun rescanLocalLibrary() {
         viewModelScope.launch {
             repository.rescanLocalMusic()
+        }
+    }
+
+    fun signInWithGoogle(context: android.content.Context, explicitClientId: String? = null) {
+        viewModelScope.launch {
+            val clientIdToUse = explicitClientId ?: googleClientId.value
+            Log.d("FusionMainViewModel", "Attempting sign-in with ClientID: $clientIdToUse")
+            
+            val result = authManager.signIn(context, clientIdToUse)
+            result.onSuccess { session ->
+                repository.youtubeProvider.resolver.updateUserToken(session.idToken)
+                // Also save the client ID if it was provided explicitly
+                if (!explicitClientId.isNullOrBlank()) {
+                    updateGoogleClientId(explicitClientId)
+                }
+                _eventFlow.emit("Bienvenido, ${session.displayName}")
+            }
+            result.onFailure { error ->
+                _eventFlow.emit(error.message ?: "Fallo al iniciar sesión")
+            }
+        }
+    }
+
+    fun signOut() {
+        viewModelScope.launch {
+            authManager.signOut()
+            repository.youtubeProvider.resolver.updateUserToken(null)
+            _eventFlow.emit("Sesión cerrada")
+        }
+    }
+
+    fun updateGoogleClientId(clientId: String) {
+        viewModelScope.launch {
+            val trimmed = clientId.trim()
+            configManager.saveGoogleClientId(trimmed)
+            _googleClientId.value = trimmed
         }
     }
 }

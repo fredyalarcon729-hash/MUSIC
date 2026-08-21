@@ -1,8 +1,11 @@
 package com.example.core.model
 
+import androidx.compose.runtime.Immutable
+
 /**
  * Supported music sources in Fusion Music architecture.
  */
+@Immutable
 enum class MusicSource(val displayName: String, val badgeColorHex: Long) {
     LOCAL("Local", 0xFF00E5FF),
     YOUTUBE("YouTube Music", 0xFFFF0000),
@@ -14,6 +17,7 @@ enum class MusicSource(val displayName: String, val badgeColorHex: Long) {
 /**
  * Core representation of a musical track across local files and external services.
  */
+@Immutable
 data class Song(
     val id: String,
     val title: String,

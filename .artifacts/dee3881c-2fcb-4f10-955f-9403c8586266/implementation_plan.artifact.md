@@ -1,24 +1,34 @@
-# Critical YouTube Stream Extraction Fix
+# Estrategia de Audio v11.0: Máximo Rendimiento y Latencia Cero
 
-The current extraction methods are being blocked by YouTube's latest security measures, causing the app to fallback to demo tracks. This plan implements a more robust extraction logic using the YouTube Music Web client configuration.
+Este plan elimina definitivamente la inestabilidad de la Mezcla Pro y restaura un motor único optimizado para cambios de canción ultra-rápidos y estables, garantizando que la app no vuelva a cerrarse.
 
 ## User Review Required
 
-> [!CAUTION]
-> YouTube's bot detection is extremely aggressive. I will switch the extraction engine to mimic a web browser (YouTube Music Web client), which currently has higher success rates for audio extraction. I will also add more diverse Piped instances.
+> [!IMPORTANT]
+> **Adiós al Crossfade**: Siguiendo tu solicitud, hemos eliminado por completo el sistema de fundido cruzado y el doble motor. Esto libera el 50% de la carga de memoria de audio, eliminando la causa de los cierres.
+> **Latencia Mínima NAtiva**: Configuraremos el reproductor para encadenar las canciones de forma **Gapless** nativa. El motor lee el siguiente archivo mientras escuchas el anterior para que el cambio sea instantáneo.
+> **Optimización de Interfaz**: Hemos simplificado el sistema de actualización de la barra de progreso para que la app se sienta mucho más ligera y fluida al navegar.
 
 ## Proposed Changes
 
-### [Component Name] Core Layer
+### [Component Name] Audio Engine Cleanup - FusionPlayerManager
 
-#### [MODIFY] [YouTubeAudioResolver.kt](file:///C:/Users/falarcon/StudioProjects/MUSIC/app/src/main/java/com/example/core/source/youtube/YouTubeAudioResolver.kt)
-- **Switch to WEB_REMIX client**: Update `resolveViaInnertube` to use the YouTube Music Web client configuration. This includes specific `clientName`, `clientVersion`, and a browser-like `User-Agent`.
-- **Add Required Headers**: Include `Origin` and `Referer` headers which are often mandatory for the Web client.
-- **Improved Parsing**: Handle cases where the stream might be encrypted or requires specific parameters from the `streamingData`.
-- **Expanded Piped List**: Add more public Piped instances as fallbacks.
+#### [MODIFY] [FusionPlayerManager.kt](file:///C:/Users/falarcon/StudioProjects/MUSIC/app/src/main/java/com/example/player/FusionPlayerManager.kt)
+- **Eliminar Motores Duales**: Borrar `playerA`, `playerB` y sus procesadores independientes. Restaurar una única instancia de `exoPlayer`.
+- **Simplificación de Comandos**: Modificar `skipToNext` y `skipToPrevious` para realizar saltos directos de Media3 sin lógica de DJ manual.
+- **Configuración de Carga**: Ajustar el buffer de ExoPlayer para una respuesta inmediata.
+
+### [Component Name] UI & Configuration
+
+#### [MODIFY] [SettingsScreen.kt](file:///C:/Users/falarcon/StudioProjects/MUSIC/app/src/main/java/com/example/ui/screens/SettingsScreen.kt)
+- Eliminar visualmente los controles de Crossfade y Mezcla Pro.
+
+#### [MODIFY] [FusionMediaService.kt](file:///C:/Users/falarcon/StudioProjects/MUSIC/app/src/main/java/com/example/service/FusionMediaService.kt)
+- Volver a la vinculación directa y simple con el reproductor único para la notificación y Android Auto.
 
 ## Verification Plan
 
 ### Manual Verification
-- Monitor Logcat for `YouTubeAudioResolver` logs to see the raw response status if it fails.
-- Play several different YouTube tracks to ensure consistent behavior.
+1.  **Prueba de Salto Rápido**: Pulsar "Siguiente" 10 veces seguidas. La app debe responder al instante y **no debe cerrarse**.
+2.  **Continuidad Gapless**: Comprobar que al finalizar una canción local, la siguiente entra sin un solo milisegundo de silencio.
+3.  **Karaoke**: Confirmar que el botón de eliminar voz sigue funcionando sobre el motor principal único.

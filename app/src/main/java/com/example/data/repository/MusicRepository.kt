@@ -5,7 +5,6 @@ import com.example.core.model.Artist
 import com.example.core.model.MusicSource
 import com.example.core.model.Song
 import com.example.core.source.LocalMusicSourceProvider
-import com.example.core.source.youtube.YouTubeAudioResolver
 import com.example.core.source.youtube.YouTubeDownloadManager
 import com.example.core.source.youtube.YouTubeMusicSourceProvider
 import com.example.data.local.dao.MusicDao
@@ -39,7 +38,7 @@ class MusicRepository(
 
     private val _rawSongs = MutableStateFlow<List<Song>>(emptyList())
 
-    private val _isScanning = MutableStateFlow(false)
+    private val _isScanning = MutableStateFlow(value = false)
     val isScanning: StateFlow<Boolean> = _isScanning.asStateFlow()
 
     val favoritesFlow: Flow<List<FavoriteEntity>> = musicDao.getAllFavorites()
@@ -88,6 +87,34 @@ class MusicRepository(
         val nonDuplicateDownloaded = downloadedSongs.filterNot { localIds.contains(it.id) }
         localMapped + nonDuplicateDownloaded
     }.distinctUntilChanged()
+
+    // Statistics Flows
+    val totalListeningTimeMs: Flow<Long> = musicDao.getTotalListeningTimeMs().map { it ?: 0L }
+
+    val topArtistsFlow: Flow<List<Pair<String, Int>>> = combine(
+        musicDao.getAllHistory(),
+        songsWithFavorites
+    ) { history, songs ->
+        val songMap = songs.associateBy { it.id }
+        history.asSequence()
+            .mapNotNull { songMap[it.songId]?.artist }
+            .groupBy { it }
+            .mapValues { it.value.size }
+            .toList()
+            .sortedByDescending { it.second }
+            .take(5)
+    }
+
+    val hourlyActivityFlow: Flow<Map<Int, Int>> = musicDao.getAllHistory().map { history ->
+        val activity = mutableMapOf<Int, Int>()
+        val calendar = java.util.Calendar.getInstance()
+        history.forEach {
+            calendar.timeInMillis = it.playedAt
+            val hour = calendar.get(java.util.Calendar.HOUR_OF_DAY)
+            activity[hour] = (activity[hour] ?: 0) + 1
+        }
+        activity
+    }
 
     val albumsFlow: Flow<List<Album>> = songsWithFavorites.map { songs ->
         localProvider.getLocalAlbums(songs)
@@ -192,4 +219,3 @@ class MusicRepository(
         // Reactive database init
     }
 }
-

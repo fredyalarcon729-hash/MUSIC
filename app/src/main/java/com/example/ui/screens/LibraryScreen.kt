@@ -166,7 +166,7 @@ fun LibraryScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(top = 12.dp, bottom = 120.dp)
                 ) {
-                    item {
+                    item(key = "songs_header") {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -228,7 +228,7 @@ fun LibraryScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(top = 12.dp, bottom = 120.dp)
                 ) {
-                    item {
+                    item(key = "downloads_header") {
                         // Downloads Header Summary Banner
                         Surface(
                             shape = RoundedCornerShape(16.dp),
@@ -312,7 +312,7 @@ fun LibraryScreen(
                     }
 
                     if (downloadedSongs.isEmpty()) {
-                        item {
+                        item(key = "empty_downloads") {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -567,7 +567,7 @@ fun LibraryScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 LazyColumn(modifier = Modifier.height(300.dp)) {
-                    items(albumSongs) { song ->
+                    items(albumSongs, key = { it.id }) { song ->
                         SongListItem(
                             song = song,
                             isPlaying = playerState.isPlaying && playerState.currentSong?.id == song.id,
@@ -633,7 +633,7 @@ fun LibraryScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 LazyColumn(modifier = Modifier.height(300.dp)) {
-                    items(artistSongs) { song ->
+                    items(artistSongs, key = { it.id }) { song ->
                         SongListItem(
                             song = song,
                             isPlaying = playerState.isPlaying && playerState.currentSong?.id == song.id,

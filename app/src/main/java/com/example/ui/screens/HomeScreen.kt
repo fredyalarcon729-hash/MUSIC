@@ -93,7 +93,7 @@ fun HomeScreen(
         contentPadding = PaddingValues(bottom = 120.dp)
     ) {
         // Top Header
-        item {
+        item(key = "home_header") {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -151,7 +151,7 @@ fun HomeScreen(
         }
 
         // Hero Quick Mix Card
-        item {
+        item(key = "hero_card") {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -266,7 +266,7 @@ fun HomeScreen(
 
         // Favorites Carousel (if any)
         if (favoriteSongs.isNotEmpty()) {
-            item {
+            item(key = "favorites_section") {
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(
                     modifier = Modifier
@@ -307,7 +307,7 @@ fun HomeScreen(
 
         // Featured Albums Carousel
         if (albums.isNotEmpty()) {
-            item {
+            item(key = "albums_section") {
                 Spacer(modifier = Modifier.height(20.dp))
                 Text(
                     text = "Álbumes en Dispositivo",
@@ -333,7 +333,7 @@ fun HomeScreen(
         }
 
         // All Songs Section
-        item {
+        item(key = "recent_songs_header") {
             Spacer(modifier = Modifier.height(24.dp))
             Row(
                 modifier = Modifier

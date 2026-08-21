@@ -1,32 +1,11 @@
 package com.example.ui.player
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -35,39 +14,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Equalizer
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.QueueMusic
-import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.RepeatOne
-import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -76,27 +28,20 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import android.media.audiofx.Visualizer
 import com.example.core.model.EqualizerPreset
 import com.example.core.model.Lyrics
 import com.example.core.model.PlayerUiState
 import com.example.core.model.RepeatMode as DomainRepeatMode
-import com.example.ui.theme.NeonPink
-import com.example.ui.theme.ObsidianBorder
-import com.example.ui.theme.ObsidianCard
-import com.example.ui.theme.ObsidianDark
-import com.example.ui.theme.ObsidianSurface
-import com.example.ui.theme.ObsidianSurfaceVariant
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TextTertiary
+import com.example.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -113,7 +58,11 @@ fun FullPlayerSheet(
     onToggleFavorite: () -> Unit,
     onOpenQueue: () -> Unit,
     onSelectSleepTimer: (Int?) -> Unit,
-    onSelectEqualizer: (EqualizerPreset) -> Unit
+    onSelectEqualizer: (EqualizerPreset) -> Unit,
+    onToggleKaraokeMode: (Boolean) -> Unit,
+    onSetPitch: (Int) -> Unit,
+    onToggleVocalReduction: (Boolean) -> Unit,
+    onSetVocalStrength: (Float) -> Unit
 ) {
     val currentSong = playerState.currentSong ?: return
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -153,6 +102,7 @@ fun FullPlayerSheet(
                 )
             }
 
+            // Normal Content (Controls & Artwork)
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -167,26 +117,15 @@ fun FullPlayerSheet(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    IconButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.testTag("full_player_dismiss")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.KeyboardArrowDown,
-                            contentDescription = "Cerrar reproductor",
-                            tint = TextPrimary,
-                            modifier = Modifier.size(32.dp)
-                        )
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.KeyboardArrowDown, null, tint = TextPrimary, modifier = Modifier.size(32.dp))
                     }
 
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "REPRODUCIENDO",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                letterSpacing = 2.sp,
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = accentColor
+                            text = if (playerState.isKaraokeModeActive) "MODO KARAOKE" else "REPRODUCIENDO",
+                            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 2.sp, fontWeight = FontWeight.Bold),
+                            color = if (playerState.isKaraokeModeActive) NeonPink else accentColor
                         )
                         Text(
                             text = currentSong.album.ifBlank { "Fusion Music" },
@@ -197,337 +136,186 @@ fun FullPlayerSheet(
                         )
                     }
 
-                    IconButton(
-                        onClick = { showLyrics = !showLyrics },
-                        modifier = Modifier.testTag("full_player_lyrics_toggle")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.MusicNote,
-                            contentDescription = "Ver letras",
-                            tint = if (showLyrics) accentColor else TextPrimary,
-                            modifier = Modifier.size(26.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Main View (Artwork or Lyrics)
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AnimatedContent(
-                        targetState = showLyrics,
-                        transitionSpec = { fadeIn(tween(400)) togetherWith fadeOut(tween(400)) },
-                        label = "lyrics_artwork_transition"
-                    ) { lyricsVisible ->
-                        if (lyricsVisible) {
-                            LyricsDisplay(
-                                lyrics = playerState.currentLyrics,
-                                currentPositionMs = playerState.currentPositionMs,
-                                accentColor = accentColor
+                    Row {
+                        IconButton(onClick = { onToggleKaraokeMode(!playerState.isKaraokeModeActive) }) {
+                            Icon(
+                                imageVector = if (playerState.isKaraokeModeActive) Icons.Default.Mic else Icons.Outlined.Mic,
+                                contentDescription = null,
+                                tint = if (playerState.isKaraokeModeActive) NeonPink else TextPrimary
                             )
-                        } else {
-                            // Center Artwork
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(0.85f)
-                                    .aspectRatio(1f)
-                                    .shadow(40.dp, RoundedCornerShape(24.dp), spotColor = accentColor)
-                                    .clip(RoundedCornerShape(24.dp))
-                                    .border(
-                                        1.dp,
-                                        accentColor.copy(alpha = 0.3f),
-                                        RoundedCornerShape(24.dp)
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (!currentSong.artworkUri.isNullOrBlank()) {
-                                    AsyncImage(
-                                        model = currentSong.artworkUri,
-                                        contentDescription = "Carátula",
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(ObsidianCard),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.MusicNote,
-                                            contentDescription = null,
-                                            tint = accentColor,
-                                            modifier = Modifier.size(60.dp)
-                                        )
-                                    }
-                                }
-                            }
+                        }
+                        IconButton(onClick = { showLyrics = !showLyrics }) {
+                            Icon(
+                                imageVector = Icons.Default.MusicNote,
+                                contentDescription = null,
+                                tint = if (showLyrics) accentColor else TextPrimary
+                            )
                         }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Song Info & Favorite
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                // Artwork Area
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.85f)
+                        .aspectRatio(1f)
+                        .shadow(40.dp, RoundedCornerShape(24.dp), spotColor = accentColor)
+                        .clip(RoundedCornerShape(24.dp))
+                        .border(1.dp, accentColor.copy(alpha = 0.3f), RoundedCornerShape(24.dp)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = currentSong.title,
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                            color = TextPrimary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = currentSong.artist,
-                            style = MaterialTheme.typography.titleMedium.copy(color = TextSecondary),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                    if (!currentSong.artworkUri.isNullOrBlank()) {
+                        AsyncImage(model = currentSong.artworkUri, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    } else {
+                        Icon(Icons.Default.MusicNote, null, tint = accentColor, modifier = Modifier.size(60.dp))
                     }
+                }
 
-                    IconButton(
-                        onClick = onToggleFavorite,
-                        modifier = Modifier.testTag("full_player_fav")
-                    ) {
-                        Icon(
-                            imageVector = if (currentSong.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                            contentDescription = if (currentSong.isFavorite) "Quitar de favoritos" else "Agregar a favoritos",
-                            tint = if (currentSong.isFavorite) NeonPink else TextTertiary,
-                            modifier = Modifier.size(30.dp)
-                        )
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Karaoke Technical Controls
+                if (playerState.isKaraokeModeActive) {
+                    KaraokeControlPanel(playerState, onSetPitch, onToggleVocalReduction, onSetVocalStrength)
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                // Song Info
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(currentSong.title, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold), color = TextPrimary, maxLines = 1)
+                        Text(currentSong.artist, style = MaterialTheme.typography.titleMedium, color = TextSecondary, maxLines = 1)
+                    }
+                    IconButton(onClick = onToggleFavorite) {
+                        Icon(if (currentSong.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder, null, tint = if (currentSong.isFavorite) NeonPink else TextTertiary, modifier = Modifier.size(30.dp))
                     }
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
-
-                // Dynamic Audio Waveform Visualizer
-                DynamicWaveformBar(
-                    isPlaying = playerState.isPlaying,
-                    progress = playerState.progress,
-                    accentColor = accentColor
-                )
-
+                NeonVisualizer(playerState.audioSessionId, playerState.isPlaying, if (playerState.isKaraokeModeActive) NeonPink else accentColor)
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Seek Slider
+                // Playback Slider
                 val currentSliderValue = if (isDraggingSlider) dragSliderValue else playerState.progress
                 Slider(
                     value = currentSliderValue,
-                    onValueChange = {
-                        isDraggingSlider = true
-                        dragSliderValue = it
-                    },
-                    onValueChangeFinished = {
-                        isDraggingSlider = false
-                        val targetMs = (dragSliderValue * playerState.durationMs).toLong()
-                        onSeekTo(targetMs)
-                    },
-                    colors = SliderDefaults.colors(
-                        thumbColor = Color.White,
-                        activeTrackColor = accentColor,
-                        inactiveTrackColor = Color.White.copy(alpha = 0.2f)
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("full_player_seek_slider")
+                    onValueChange = { isDraggingSlider = true; dragSliderValue = it },
+                    onValueChangeFinished = { isDraggingSlider = false; onSeekTo((dragSliderValue * playerState.durationMs).toLong()) },
+                    colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = if (playerState.isKaraokeModeActive) NeonPink else accentColor)
                 )
-
-                // Timestamps
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = playerState.positionFormatted,
-                        style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary)
-                    )
-                    Text(
-                        text = playerState.durationFormatted,
-                        style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary)
-                    )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(playerState.positionFormatted, color = TextSecondary)
+                    Text(playerState.durationFormatted, color = TextSecondary)
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Playback Controls Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    // Shuffle Button
-                    IconButton(onClick = onToggleShuffle) {
-                        Icon(
-                            imageVector = Icons.Default.Shuffle,
-                            contentDescription = "Modo aleatorio",
-                            tint = if (playerState.shuffleMode) accentColor else TextTertiary,
-                            modifier = Modifier.size(26.dp)
-                        )
-                    }
-
-                    // Previous Track
-                    IconButton(onClick = onSkipPrevious) {
-                        Icon(
-                            imageVector = Icons.Default.SkipPrevious,
-                            contentDescription = "Anterior",
-                            tint = TextPrimary,
-                            modifier = Modifier.size(38.dp)
-                        )
-                    }
-
-                    // Play / Pause FAB
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.size(76.dp)
-                    ) {
-                        if (playerState.isBuffering) {
-                            CircularProgressIndicator(
-                                color = accentColor,
-                                strokeWidth = 3.dp,
-                                modifier = Modifier.size(48.dp)
-                            )
-                        } else {
-                            Surface(
-                                onClick = onTogglePlayPause,
-                                shape = CircleShape,
-                                color = Color.White,
-                                shadowElevation = 12.dp,
-                                modifier = Modifier.size(68.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = if (playerState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                        contentDescription = if (playerState.isPlaying) "Pausar" else "Reproducir",
-                                        tint = Color.Black,
-                                        modifier = Modifier.size(36.dp)
-                                    )
-                                }
-                            }
+                // Main Controls
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
+                    IconButton(onClick = onToggleShuffle) { Icon(Icons.Default.Shuffle, null, tint = if (playerState.shuffleMode) accentColor else TextTertiary) }
+                    IconButton(onClick = onSkipPrevious) { Icon(Icons.Default.SkipPrevious, null, tint = TextPrimary, modifier = Modifier.size(38.dp)) }
+                    Surface(onClick = onTogglePlayPause, shape = CircleShape, color = Color.White, modifier = Modifier.size(68.dp)) {
+                        Box(contentAlignment = Alignment.Center) {
+                            if (playerState.isBuffering) CircularProgressIndicator(color = accentColor, modifier = Modifier.size(40.dp))
+                            else Icon(if (playerState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(36.dp))
                         }
                     }
-
-                    // Next Track
-                    IconButton(onClick = onSkipNext) {
-                        Icon(
-                            imageVector = Icons.Default.SkipNext,
-                            contentDescription = "Siguiente",
-                            tint = TextPrimary,
-                            modifier = Modifier.size(38.dp)
-                        )
-                    }
-
-                    // Repeat Mode
-                    IconButton(onClick = onCycleRepeat) {
-                        Icon(
-                            imageVector = when (playerState.repeatMode) {
-                                DomainRepeatMode.ONE -> Icons.Default.RepeatOne
-                                else -> Icons.Default.Repeat
-                            },
-                            contentDescription = "Repetir",
-                            tint = if (playerState.repeatMode != DomainRepeatMode.OFF) accentColor else TextTertiary,
-                            modifier = Modifier.size(26.dp)
-                        )
-                    }
+                    IconButton(onClick = onSkipNext) { Icon(Icons.Default.SkipNext, null, tint = TextPrimary, modifier = Modifier.size(38.dp)) }
+                    IconButton(onClick = onCycleRepeat) { Icon(if (playerState.repeatMode == DomainRepeatMode.ONE) Icons.Default.RepeatOne else Icons.Default.Repeat, null, tint = if (playerState.repeatMode != DomainRepeatMode.OFF) accentColor else TextTertiary) }
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.weight(1f))
+                
+                // Extra Tools
+                Row(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp).clip(RoundedCornerShape(20.dp)).background(Color.White.copy(alpha = 0.05f)).padding(16.dp), horizontalArrangement = Arrangement.SpaceAround) {
+                    ToolItem(Icons.Default.Timer, if (playerState.sleepTimerMinutesLeft != null) "${playerState.sleepTimerMinutesLeft}m" else "Timer", playerState.sleepTimerMinutesLeft != null, accentColor) { showTimerDialog = true }
+                    ToolItem(Icons.Default.Equalizer, "EQ", true, accentColor) { showEqDialog = true }
+                    ToolItem(Icons.Default.QueueMusic, "Cola", false, accentColor) { onOpenQueue() }
+                }
+            }
 
-                // Bottom Audio Tools Row (Sleep timer, Equalizer)
-                Row(
+            // LYRICS OVERLAY - Using non-extension version
+            androidx.compose.animation.AnimatedVisibility(
+                visible = showLyrics,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+            ) {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(Color.White.copy(alpha = 0.1f))
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceAround,
-                    verticalAlignment = Alignment.CenterVertically
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.92f))
                 ) {
-                    // Sleep Timer
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clickable { showTimerDialog = true }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Timer,
-                            contentDescription = null,
-                            tint = if (playerState.sleepTimerMinutesLeft != null) accentColor else TextSecondary,
-                            modifier = Modifier.size(20.dp)
+                    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
+                        Spacer(modifier = Modifier.height(48.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Letras Sincronizadas", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = Color.White)
+                            IconButton(onClick = { showLyrics = false }, modifier = Modifier.background(Color.White.copy(alpha = 0.1f), CircleShape)) {
+                                Icon(Icons.Outlined.Close, null, tint = Color.White)
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
+                        LyricsDisplay(
+                            lyrics = playerState.currentLyrics,
+                            currentPositionMs = playerState.currentPositionMs,
+                            accentColor = if (playerState.isKaraokeModeActive) NeonPink else accentColor
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (playerState.sleepTimerMinutesLeft != null) "${playerState.sleepTimerMinutesLeft}m" else "Timer",
-                            color = if (playerState.sleepTimerMinutesLeft != null) accentColor else TextSecondary
-                        )
-                    }
-
-                    // Equalizer
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clickable { showEqDialog = true }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Equalizer,
-                            contentDescription = null,
-                            tint = accentColor,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = "EQ", color = TextSecondary)
-                    }
-
-                    // Queue Button (Quick access)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clickable { onOpenQueue() }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.QueueMusic,
-                            contentDescription = null,
-                            tint = TextSecondary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = "Cola", color = TextSecondary)
                     }
                 }
-
-                Spacer(modifier = Modifier.height(40.dp))
             }
         }
     }
 
-    if (showTimerDialog) {
-        SleepTimerDialog(
-            currentMinutes = playerState.sleepTimerMinutesLeft,
-            onDismiss = { showTimerDialog = false },
-            onSelect = {
-                onSelectSleepTimer(it)
-                showTimerDialog = false
-            }
-        )
-    }
+    // Dialogs...
+    if (showTimerDialog) SleepTimerDialog(playerState.sleepTimerMinutesLeft, { showTimerDialog = false }, { onSelectSleepTimer(it); showTimerDialog = false })
+    if (showEqDialog) EqualizerDialog(playerState.equalizerPreset, { showEqDialog = false }, { onSelectEqualizer(it); showEqDialog = false })
+}
 
-    if (showEqDialog) {
-        EqualizerDialog(
-            currentPreset = playerState.equalizerPreset,
-            onDismiss = { showEqDialog = false },
-            onSelect = {
-                onSelectEqualizer(it)
-                showEqDialog = false
+@Composable
+fun KaraokeControlPanel(
+    playerState: PlayerUiState,
+    onSetPitch: (Int) -> Unit,
+    onToggleVocalReduction: (Boolean) -> Unit,
+    onSetVocalStrength: (Float) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(NeonPink.copy(alpha = 0.12f))
+            .border(1.dp, NeonPink.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
+            .padding(16.dp)
+    ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Column {
+                Text("Tonalidad", style = MaterialTheme.typography.labelSmall, color = NeonPink)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { onSetPitch(playerState.pitchSemitones - 1) }) { Icon(Icons.Default.Remove, null, tint = Color.White) }
+                    Text(text = if (playerState.pitchSemitones >= 0) "+${playerState.pitchSemitones}" else playerState.pitchSemitones.toString(), color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.width(30.dp), textAlign = TextAlign.Center)
+                    IconButton(onClick = { onSetPitch(playerState.pitchSemitones + 1) }) { Icon(Icons.Default.Add, null, tint = Color.White) }
+                }
             }
-        )
+            Column(horizontalAlignment = Alignment.End) {
+                Text("Eliminar Voz", style = MaterialTheme.typography.labelSmall, color = NeonPink)
+                Switch(checked = playerState.isVocalReductionEnabled, onCheckedChange = onToggleVocalReduction, colors = SwitchDefaults.colors(checkedThumbColor = Color.Black, checkedTrackColor = NeonPink))
+            }
+        }
+        if (playerState.isVocalReductionEnabled) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("Guía de Voz (Intensidad)", style = MaterialTheme.typography.labelSmall, color = NeonPink.copy(alpha = 0.6f))
+            Slider(value = playerState.vocalReductionStrength, onValueChange = onSetVocalStrength, colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = NeonPink))
+        }
+    }
+}
+
+@Composable
+fun ToolItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, isActive: Boolean, accent: Color, onClick: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onClick() }) {
+        Icon(icon, null, tint = if (isActive) accent else TextSecondary, modifier = Modifier.size(20.dp))
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(label, color = if (isActive) accent else TextSecondary)
     }
 }
 
@@ -537,208 +325,189 @@ fun LyricsDisplay(
     currentPositionMs: Long,
     accentColor: Color
 ) {
+    var isLoadingTimeout by remember { mutableStateOf(false) }
+    // Constants for fine-tuning
+    val latencyCompensation = 200L // 200ms ahead to match audio output
+    val compensatedPosition = currentPositionMs + latencyCompensation
+
+    LaunchedEffect(lyrics) {
+        if (lyrics == null) {
+            isLoadingTimeout = false
+            kotlinx.coroutines.delay(8000)
+            if (lyrics == null) isLoadingTimeout = true
+        }
+    }
+
     if (lyrics == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            if (isLoadingTimeout) Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Default.Info, null, tint = TextTertiary, modifier = Modifier.size(48.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Letras no disponibles", color = TextSecondary, textAlign = TextAlign.Center)
+            } else Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 CircularProgressIndicator(color = accentColor, modifier = Modifier.size(32.dp))
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Buscando letras...", color = TextSecondary)
+                Text("Buscando...", color = TextSecondary)
             }
         }
         return
     }
 
     if (!lyrics.isSynced || lyrics.lines.isEmpty()) {
-        // Plain text display
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(vertical = 16.dp)
+                .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
             Text(
-                text = lyrics.plainText ?: "No hay letras disponibles para esta canción.",
+                text = lyrics.plainText ?: "No hay letras.",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
                     lineHeight = 36.sp,
-                    textAlign = TextAlign.Start
+                    textAlign = TextAlign.Center
                 ),
-                color = TextPrimary
+                color = TextPrimary,
+                modifier = Modifier.fillMaxWidth()
             )
         }
     } else {
-        // Synced lyrics display
         val listState = rememberLazyListState()
-        val currentLineIndex = lyrics.lines.indexOfLast { it.timeMs <= currentPositionMs }.coerceAtLeast(0)
+        val currentLineIndex = lyrics.lines.indexOfLast { it.timeMs <= compensatedPosition }.coerceAtLeast(0)
 
         LaunchedEffect(currentLineIndex) {
             if (currentLineIndex >= 0) {
-                listState.animateScrollToItem(currentLineIndex, -150)
+                listState.animateScrollToItem(currentLineIndex, -400) // Improved centering
             }
         }
 
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 100.dp)
-        ) {
-            itemsIndexed(lyrics.lines) { index, line ->
-                val isCurrent = index == currentLineIndex
-                val alpha by animateFloatAsState(
-                    targetValue = if (isCurrent) 1f else 0.4f,
-                    animationSpec = tween(400),
-                    label = "lyric_alpha"
-                )
-
-                Text(
-                    text = line.text,
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontWeight = FontWeight.Black,
-                        fontSize = 26.sp,
-                        lineHeight = 40.sp,
-                        textAlign = TextAlign.Start
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer { alpha = 0.99f }
+            .drawWithContent {
+                drawContent()
+                drawRect(
+                    Brush.verticalGradient(
+                        listOf(Color.Transparent, Color.Black, Color.Black, Color.Transparent),
+                        startY = 0f,
+                        endY = size.height
                     ),
-                    color = (if (isCurrent) Color.White else TextPrimary).copy(alpha = alpha),
-                    modifier = Modifier
-                        .padding(vertical = 12.dp)
-                        .fillMaxWidth()
+                    blendMode = androidx.compose.ui.graphics.BlendMode.DstIn
                 )
-            }
-        }
-    }
-}
+            }) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(vertical = 250.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                itemsIndexed(lyrics.lines) { index, line ->
+                    val isPast = index < currentLineIndex
+                    val isCurrent = index == currentLineIndex
+                    val isUpcoming = index == currentLineIndex + 1
+                    
+                    // Detect if upcoming line is close to trigger pre-highlight
+                    val timeToNext = line.timeMs - compensatedPosition
+                    val isVeryClose = isUpcoming && timeToNext < 600L
 
-@Composable
-fun DynamicWaveformBar(
-    isPlaying: Boolean,
-    progress: Float,
-    accentColor: Color,
-    barCount: Int = 32
-) {
-    val transition = rememberInfiniteTransition(label = "waveform")
-    val animWave by transition.animateFloat(
-        initialValue = 0.2f,
-        targetValue = 1.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "wave_val"
-    )
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(32.dp),
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        for (i in 0 until barCount) {
-            val barProgress = i.toFloat() / barCount.toFloat()
-            val isPast = barProgress <= progress
-
-            val dynamicFactor = if (isPlaying) {
-                val offset = (i % 5) * 0.15f
-                ((animWave + offset) % 1.0f).coerceIn(0.15f, 1f)
-            } else {
-                0.2f
-            }
-
-            val heightFraction = (0.25f + 0.75f * kotlin.math.sin(i * 0.4f).toFloat().let { kotlin.math.abs(it) } * dynamicFactor).coerceIn(0.15f, 1f)
-
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(heightFraction)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(
-                        if (isPast) accentColor else Color.White.copy(alpha = 0.1f)
+                    val scale by animateFloatAsState(
+                        targetValue = if (isCurrent) 1.15f else 1f,
+                        animationSpec = tween(400, easing = FastOutSlowInEasing),
+                        label = "scale"
                     )
-            )
+                    
+                    val targetAlpha = when {
+                        isCurrent -> 1f
+                        isVeryClose -> 0.7f // Glow slightly before it starts
+                        isPast -> 0.25f // Faded past
+                        else -> 0.4f // Distant future
+                    }
+                    
+                    val alpha by animateFloatAsState(
+                        targetValue = targetAlpha,
+                        animationSpec = tween(400),
+                        label = "alpha"
+                    )
+
+                    Text(
+                        text = line.text,
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontWeight = if (isCurrent) FontWeight.Black else FontWeight.Bold,
+                            fontSize = if (isCurrent) 28.sp else 24.sp,
+                            lineHeight = 38.sp,
+                            textAlign = TextAlign.Center
+                        ),
+                        color = (if (isCurrent) Color.White else TextPrimary).copy(alpha = alpha),
+                        modifier = Modifier
+                            .padding(vertical = 12.dp, horizontal = 32.dp)
+                            .fillMaxWidth()
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                            }
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-fun SleepTimerDialog(
-    currentMinutes: Int?,
-    onDismiss: () -> Unit,
-    onSelect: (Int?) -> Unit
-) {
-    androidx.compose.material3.AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Temporizador de Apagado", color = TextPrimary) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(null, 15, 30, 45, 60, 90).forEach { mins ->
-                    val isSelected = currentMinutes == mins
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (isSelected) Color.White.copy(alpha = 0.1f) else Color.Transparent)
-                            .clickable { onSelect(mins) }
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = if (mins == null) "Desactivado" else "$mins minutos",
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) Color.White else TextPrimary
-                            )
-                        )
+fun NeonVisualizer(audioSessionId: Int, isPlaying: Boolean, accentColor: Color) {
+    var magnitudes by remember { mutableStateOf(FloatArray(32) { 0.1f }) }
+    DisposableEffect(audioSessionId) {
+        if (audioSessionId <= 0) return@DisposableEffect onDispose {}
+        val visualizer = try {
+            Visualizer(audioSessionId).apply {
+                captureSize = 128
+                setDataCaptureListener(object : Visualizer.OnDataCaptureListener {
+                    override fun onWaveFormDataCapture(v: Visualizer?, waveform: ByteArray?, samplingRate: Int) {}
+                    override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {
+                        if (fft == null) return
+                        val newMagnitudes = FloatArray(32)
+                        for (i in 0 until 32) {
+                            val real = fft[i * 2].toInt(); val imag = fft[i * 2 + 1].toInt()
+                            val mag = Math.sqrt((real * real + imag * imag).toDouble()).toFloat()
+                            newMagnitudes[i] = (mag / 50f).coerceIn(0.1f, 1f)
+                        }
+                        magnitudes = newMagnitudes
                     }
-                }
+                }, Visualizer.getMaxCaptureRate() / 2, false, true)
+                enabled = true
             }
-        },
-        confirmButton = {
-            androidx.compose.material3.TextButton(onClick = onDismiss) {
-                Text("Cancelar", color = Color.White)
-            }
-        },
-        containerColor = ObsidianSurfaceVariant
-    )
+        } catch (e: Exception) { null }
+        onDispose { visualizer?.enabled = false; visualizer?.release() }
+    }
+    Row(modifier = Modifier.fillMaxWidth().height(48.dp), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.Bottom) {
+        magnitudes.forEach { mag ->
+            Box(modifier = Modifier.weight(1f).fillMaxHeight(if (isPlaying) mag else 0.1f).clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)).background(Brush.verticalGradient(listOf(accentColor, accentColor.copy(alpha = 0.4f), Color.Transparent))))
+        }
+    }
 }
 
 @Composable
-fun EqualizerDialog(
-    currentPreset: EqualizerPreset,
-    onDismiss: () -> Unit,
-    onSelect: (EqualizerPreset) -> Unit
-) {
-    androidx.compose.material3.AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Perfil de Ecualizador", color = TextPrimary) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                EqualizerPreset.values().forEach { preset ->
-                    val isSelected = currentPreset == preset
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (isSelected) Color.White.copy(alpha = 0.1f) else Color.Transparent)
-                            .clickable { onSelect(preset) }
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = preset.displayName,
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) Color.White else TextPrimary
-                            )
-                        )
-                    }
-                }
+fun SleepTimerDialog(currentMinutes: Int?, onDismiss: () -> Unit, onSelect: (Int?) -> Unit) {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Apagado automático") }, text = {
+        Column {
+            listOf(null, 15, 30, 45, 60).forEach { mins ->
+                TextItem(if (mins == null) "Desactivado" else "$mins minutos", currentMinutes == mins) { onSelect(mins) }
             }
-        },
-        confirmButton = {
-            androidx.compose.material3.TextButton(onClick = onDismiss) {
-                Text("Cerrar", color = Color.White)
+        }
+    }, confirmButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } }, containerColor = ObsidianSurfaceVariant)
+}
+
+@Composable
+fun EqualizerDialog(currentPreset: EqualizerPreset, onDismiss: () -> Unit, onSelect: (EqualizerPreset) -> Unit) {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Ecualizador") }, text = {
+        Column {
+            EqualizerPreset.values().forEach { preset ->
+                TextItem(preset.displayName, currentPreset == preset) { onSelect(preset) }
             }
-        },
-        containerColor = ObsidianSurfaceVariant
-    )
+        }
+    }, confirmButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } }, containerColor = ObsidianSurfaceVariant)
+}
+
+@Composable
+fun TextItem(label: String, isSelected: Boolean, onClick: () -> Unit) {
+    Text(label, color = if (isSelected) Color.White else TextPrimary, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, modifier = Modifier.fillMaxWidth().clickable { onClick() }.padding(12.dp))
 }

@@ -13,6 +13,7 @@ class ConfigManager(context: Context) {
 
     companion object {
         private const val KEY_YOUTUBE_API_KEY = "youtube_api_key"
+        private const val KEY_GOOGLE_CLIENT_ID = "google_client_id"
         private const val KEY_SEARCH_HISTORY = "search_history"
         private const val MAX_HISTORY_ITEMS = 10
     }
@@ -29,6 +30,20 @@ class ConfigManager(context: Context) {
      */
     fun saveYouTubeApiKey(apiKey: String?) {
         prefs.edit { putString(KEY_YOUTUBE_API_KEY, apiKey) }
+    }
+
+    /**
+     * Get the stored Google Client ID.
+     */
+    fun getGoogleClientId(): String? {
+        return prefs.getString(KEY_GOOGLE_CLIENT_ID, null)
+    }
+
+    /**
+     * Save the Google Client ID.
+     */
+    fun saveGoogleClientId(clientId: String?) {
+        prefs.edit { putString(KEY_GOOGLE_CLIENT_ID, clientId) }
     }
 
     /**
