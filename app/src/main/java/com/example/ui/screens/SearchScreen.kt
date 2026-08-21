@@ -55,15 +55,7 @@ import com.example.ui.SearchFilter
 import com.example.ui.SearchUiResult
 import com.example.ui.components.FusionArtwork
 import com.example.ui.components.SongListItem
-import com.example.ui.theme.NeonCyan
-import com.example.ui.theme.NeonPurpleLight
-import com.example.ui.theme.ObsidianBorder
-import com.example.ui.theme.ObsidianDark
-import com.example.ui.theme.ObsidianSurface
-import com.example.ui.theme.ObsidianSurfaceVariant
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TextTertiary
+import com.example.ui.theme.*
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -73,7 +65,6 @@ fun SearchScreen(
     searchResults: SearchUiResult,
     playerState: PlayerUiState,
     allSongs: List<Song>,
-    isSearchingYouTube: Boolean = false,
     downloadStates: Map<String, DownloadStatus> = emptyMap(),
     searchHistory: List<String> = emptyList(),
     onQueryChanged: (String) -> Unit,
@@ -92,7 +83,7 @@ fun SearchScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(ObsidianDark)
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
             .padding(top = 8.dp)
     ) {
@@ -110,27 +101,8 @@ fun SearchScreen(
                     fontWeight = FontWeight.Bold,
                     fontSize = 24.sp
                 ),
-                color = TextPrimary
+                color = MaterialTheme.colorScheme.onBackground
             )
-
-            if (isSearchingYouTube) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(14.dp),
-                        strokeWidth = 2.dp,
-                        color = Color(0xFFFF4D4D)
-                    )
-                    Text(
-                        text = "Buscando en YouTube...",
-                        color = Color(0xFFFF4D4D),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -139,12 +111,12 @@ fun SearchScreen(
         OutlinedTextField(
             value = query,
             onValueChange = onQueryChanged,
-            placeholder = { Text("Canciones, artistas, YouTube...", color = TextTertiary) },
+            placeholder = { Text("Canciones, artistas, Deezer...", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = null,
-                    tint = if (query.isNotBlank()) NeonCyan else TextTertiary
+                    tint = if (query.isNotBlank()) NeonCyan else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             trailingIcon = {
@@ -156,7 +128,7 @@ fun SearchScreen(
                         Icon(
                             imageVector = Icons.Default.Clear,
                             contentDescription = "Limpiar búsqueda",
-                            tint = TextSecondary
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -164,12 +136,12 @@ fun SearchScreen(
             singleLine = true,
             shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = ObsidianSurfaceVariant,
-                unfocusedContainerColor = ObsidianSurface,
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                 focusedBorderColor = NeonCyan,
-                unfocusedBorderColor = ObsidianBorder,
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -186,7 +158,7 @@ fun SearchScreen(
         ) {
             items(SearchFilter.values()) { filter ->
                 val isSelected = selectedFilter == filter
-                val chipColor = if (filter == SearchFilter.YOUTUBE) Color(0xFFFF4D4D) else NeonPurpleLight
+                val chipColor = if (filter == SearchFilter.DEEZER) Color(0xFFFF007F) else NeonPurpleLight
 
                 FilterChip(
                     selected = isSelected,
@@ -194,14 +166,14 @@ fun SearchScreen(
                     label = { Text(filter.label) },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = chipColor,
-                        selectedLabelColor = Color.Black,
-                        containerColor = ObsidianSurface,
-                        labelColor = TextSecondary
+                        selectedLabelColor = if (filter == SearchFilter.DEEZER) Color.White else Color.Black,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                     ),
                     border = FilterChipDefaults.filterChipBorder(
                         enabled = true,
                         selected = isSelected,
-                        borderColor = if (isSelected) chipColor else ObsidianBorder
+                        borderColor = if (isSelected) chipColor else MaterialTheme.colorScheme.outline
                     )
                 )
             }
@@ -226,7 +198,7 @@ fun SearchScreen(
                             Text(
                                 text = "Búsquedas Recientes",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = TextPrimary
+                                color = MaterialTheme.colorScheme.onBackground
                             )
                             Text(
                                 text = "Limpiar",
@@ -247,14 +219,14 @@ fun SearchScreen(
                                 Surface(
                                     onClick = { onQueryChanged(historyQuery) },
                                     shape = RoundedCornerShape(20.dp),
-                                    color = ObsidianSurface,
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder)
+                                    color = MaterialTheme.colorScheme.surface,
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                                 ) {
                                     Text(
                                         text = historyQuery,
                                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = TextSecondary
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -266,7 +238,7 @@ fun SearchScreen(
                     Text(
                         text = "Explora Categorías",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = TextPrimary
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                 }
 
@@ -279,8 +251,8 @@ fun SearchScreen(
                             Surface(
                                 onClick = { onQueryChanged(tag) },
                                 shape = RoundedCornerShape(12.dp),
-                                color = ObsidianSurfaceVariant,
-                                border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder),
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Text(
@@ -305,9 +277,9 @@ fun SearchScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Busca cualquier canción en tu teléfono o en YouTube Music.\nPuedes escuchar online o descargar para reproducir offline sin conexión.",
+                            text = "Busca cualquier canción en tu teléfono o en el catálogo global.\nPuedes escuchar online con máxima estabilidad vía Deezer.",
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                color = TextTertiary,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,
                                 lineHeight = 20.sp
                             )
@@ -317,11 +289,11 @@ fun SearchScreen(
             }
         } else {
             val hasResults = searchResults.songs.isNotEmpty() ||
-                    searchResults.youTubeSongs.isNotEmpty() ||
+                    searchResults.deezerSongs.isNotEmpty() ||
                     searchResults.artists.isNotEmpty() ||
                     searchResults.albums.isNotEmpty()
 
-            if (!hasResults && !isSearchingYouTube) {
+            if (!hasResults) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -330,7 +302,7 @@ fun SearchScreen(
                 ) {
                     Text(
                         text = "No se encontraron resultados para «$query»",
-                        style = MaterialTheme.typography.bodyLarge.copy(color = TextSecondary),
+                        style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                         textAlign = TextAlign.Center
                     )
                 }
@@ -362,17 +334,15 @@ fun SearchScreen(
                                 onAddToQueue = { onAddToQueue(song) },
                                 onAddToPlaylist = { onAddToPlaylist(song) },
                                 downloadStatus = downloadStates[song.id],
-                                onDownload = if (onDownloadSong != null) { { onDownloadSong(song) } } else null,
-                                onCancelDownload = if (onCancelDownload != null) { { onCancelDownload(song.id) } } else null,
-                                onDeleteDownload = if (onDeleteDownload != null) { { onDeleteDownload(song) } } else null,
+                                onDeleteDownload = if (song.isDownloaded && onDeleteDownload != null) { { onDeleteDownload(song) } } else null,
                                 modifier = Modifier.padding(horizontal = 8.dp)
                             )
                         }
                     }
 
-                    // 2. YouTube Online Songs
-                    if (searchResults.youTubeSongs.isNotEmpty()) {
-                        item(key = "yt_songs_header") {
+                    // 2. Deezer Online Songs (Priority over others)
+                    if (searchResults.deezerSongs.isNotEmpty()) {
+                        item(key = "dz_songs_header") {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -385,40 +355,30 @@ fun SearchScreen(
                                         modifier = Modifier
                                             .size(10.dp)
                                             .clip(CircleShape)
-                                            .background(Color(0xFFFF0000))
+                                            .background(Color(0xFFFF007F))
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = "YouTube Music Online (${searchResults.youTubeSongs.size})",
+                                        text = "Deezer Hi-Fi Online (${searchResults.deezerSongs.size})",
                                         style = MaterialTheme.typography.titleMedium.copy(
                                             fontWeight = FontWeight.Bold,
-                                            color = Color(0xFFFF6666)
+                                            color = Color(0xFFFF4D94)
                                         )
                                     )
                                 }
-
-                                Text(
-                                    text = "Reproducir / Descargar",
-                                    fontSize = 11.sp,
-                                    color = TextTertiary
-                                )
                             }
                         }
 
-                        items(searchResults.youTubeSongs, key = { it.id }) { song ->
+                        items(searchResults.deezerSongs, key = { it.id }) { song ->
                             SongListItem(
                                 song = song,
                                 isPlaying = playerState.isPlaying && playerState.currentSong?.id == song.id,
                                 isCurrent = playerState.currentSong?.id == song.id,
-                                onClick = { onPlaySong(song, searchResults.youTubeSongs) },
+                                onClick = { onPlaySong(song, searchResults.deezerSongs) },
                                 onToggleFavorite = { onToggleFavorite(song) },
                                 onPlayNext = { onPlayNext(song) },
                                 onAddToQueue = { onAddToQueue(song) },
                                 onAddToPlaylist = { onAddToPlaylist(song) },
-                                downloadStatus = downloadStates[song.id],
-                                onDownload = if (onDownloadSong != null) { { onDownloadSong(song) } } else null,
-                                onCancelDownload = if (onCancelDownload != null) { { onCancelDownload(song.id) } } else null,
-                                onDeleteDownload = if (onDeleteDownload != null) { { onDeleteDownload(song) } } else null,
                                 modifier = Modifier.padding(horizontal = 8.dp)
                             )
                         }
@@ -455,8 +415,8 @@ fun SearchScreen(
                                 }
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column {
-                                    Text(artist.name, style = MaterialTheme.typography.titleMedium.copy(color = TextPrimary))
-                                    Text("${artist.songCount} canciones", style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary, fontSize = 11.sp))
+                                    Text(artist.name, style = MaterialTheme.typography.titleMedium.copy(color = MaterialTheme.colorScheme.onSurface))
+                                    Text("${artist.songCount} canciones", style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp))
                                 }
                             }
                         }
@@ -485,8 +445,8 @@ fun SearchScreen(
                                 FusionArtwork(artworkUri = album.artworkUri, size = 44.dp, cornerRadius = 8.dp)
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column {
-                                    Text(album.title, style = MaterialTheme.typography.titleMedium.copy(color = TextPrimary))
-                                    Text("${album.artist} • ${album.songCount} pistas", style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary, fontSize = 11.sp))
+                                    Text(album.title, style = MaterialTheme.typography.titleMedium.copy(color = MaterialTheme.colorScheme.onSurface))
+                                    Text("${album.artist} • ${album.songCount} pistas", style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp))
                                 }
                             }
                         }

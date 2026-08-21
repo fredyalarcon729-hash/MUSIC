@@ -1,7 +1,7 @@
 package com.example.ui.components
 
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.RepeatMode as AnimRepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -21,7 +22,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Download
@@ -47,6 +47,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -55,14 +57,7 @@ import androidx.compose.ui.unit.sp
 import com.example.core.model.DownloadStatus
 import com.example.core.model.MusicSource
 import com.example.core.model.Song
-import com.example.ui.theme.NeonCyan
-import com.example.ui.theme.NeonGreen
-import com.example.ui.theme.NeonPink
-import com.example.ui.theme.NeonPurpleLight
-import com.example.ui.theme.ObsidianSurfaceVariant
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TextTertiary
+import com.example.ui.theme.*
 
 @Composable
 fun SongListItem(
@@ -122,7 +117,7 @@ fun SongListItem(
                 text = song.title,
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
-                    color = if (isCurrent) NeonCyan else TextPrimary
+                    color = if (isCurrent) NeonCyan else MaterialTheme.colorScheme.onSurface
                 ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -161,7 +156,7 @@ fun SongListItem(
 
                 Text(
                     text = song.artist,
-                    style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                    style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
@@ -173,7 +168,7 @@ fun SongListItem(
                     } else {
                         "• ${song.durationFormatted}"
                     },
-                    style = MaterialTheme.typography.bodyMedium.copy(color = TextTertiary),
+                    style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)),
                     fontSize = 11.sp
                 )
             }
@@ -266,7 +261,7 @@ fun SongListItem(
             Icon(
                 imageVector = if (song.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                 contentDescription = if (song.isFavorite) "Quitar de favoritos" else "Agregar a favoritos",
-                tint = if (song.isFavorite) NeonPink else TextTertiary,
+                tint = if (song.isFavorite) NeonPink else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -282,7 +277,7 @@ fun SongListItem(
                 Icon(
                     imageVector = Icons.Default.MoreVert,
                     contentDescription = "Opciones",
-                    tint = TextTertiary,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -290,7 +285,7 @@ fun SongListItem(
             DropdownMenu(
                 expanded = showMenu,
                 onDismissRequest = { showMenu = false },
-                modifier = Modifier.background(ObsidianSurfaceVariant)
+                modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 // Download or Delete Download option
                 if (song.isDownloaded && onDeleteDownload != null) {
@@ -304,7 +299,7 @@ fun SongListItem(
                     )
                 } else if (!song.isDownloaded && onDownload != null) {
                     DropdownMenuItem(
-                        text = { Text("Descargar para escuchar offline", color = TextPrimary) },
+                        text = { Text("Descargar para escuchar offline", color = MaterialTheme.colorScheme.onSurface) },
                         leadingIcon = { Icon(Icons.Default.Download, null, tint = NeonCyan) },
                         onClick = {
                             showMenu = false
@@ -314,7 +309,7 @@ fun SongListItem(
                 }
 
                 DropdownMenuItem(
-                    text = { Text("Reproducir siguiente", color = TextPrimary) },
+                    text = { Text("Reproducir siguiente", color = MaterialTheme.colorScheme.onSurface) },
                     leadingIcon = { Icon(Icons.Default.QueueMusic, null, tint = NeonCyan) },
                     onClick = {
                         showMenu = false
@@ -322,7 +317,7 @@ fun SongListItem(
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("Añadir a la cola", color = TextPrimary) },
+                    text = { Text("Añadir a la cola", color = MaterialTheme.colorScheme.onSurface) },
                     leadingIcon = { Icon(Icons.Default.QueueMusic, null, tint = NeonPurpleLight) },
                     onClick = {
                         showMenu = false
@@ -330,7 +325,7 @@ fun SongListItem(
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("Añadir a Playlist", color = TextPrimary) },
+                    text = { Text("Añadir a Playlist", color = MaterialTheme.colorScheme.onSurface) },
                     leadingIcon = { Icon(Icons.Default.PlaylistAdd, null, tint = NeonPink) },
                     onClick = {
                         showMenu = false
@@ -345,30 +340,31 @@ fun SongListItem(
 @Composable
 fun EqualizerBars(tint: Color = NeonCyan) {
     val transition = rememberInfiniteTransition(label = "eq_anim")
-    val bar1Height by transition.animateFloat(
-        initialValue = 4f,
-        targetValue = 18f,
+    
+    val bar1Scale by transition.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 0.9f,
         animationSpec = infiniteRepeatable(
             animation = tween(400, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
+            repeatMode = AnimRepeatMode.Reverse
         ),
         label = "bar1"
     )
-    val bar2Height by transition.animateFloat(
-        initialValue = 16f,
-        targetValue = 6f,
+    val bar2Scale by transition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 0.3f,
         animationSpec = infiniteRepeatable(
             animation = tween(320, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
+            repeatMode = AnimRepeatMode.Reverse
         ),
         label = "bar2"
     )
-    val bar3Height by transition.animateFloat(
-        initialValue = 8f,
-        targetValue = 20f,
+    val bar3Scale by transition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1.0f,
         animationSpec = infiniteRepeatable(
             animation = tween(480, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
+            repeatMode = AnimRepeatMode.Reverse
         ),
         label = "bar3"
     )
@@ -378,26 +374,23 @@ fun EqualizerBars(tint: Color = NeonCyan) {
         verticalAlignment = Alignment.Bottom,
         modifier = Modifier.height(20.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .width(3.dp)
-                .height(bar1Height.dp)
-                .clip(RoundedCornerShape(1.5.dp))
-                .background(tint)
-        )
-        Box(
-            modifier = Modifier
-                .width(3.dp)
-                .height(bar2Height.dp)
-                .clip(RoundedCornerShape(1.5.dp))
-                .background(tint)
-        )
-        Box(
-            modifier = Modifier
-                .width(3.dp)
-                .height(bar3Height.dp)
-                .clip(RoundedCornerShape(1.5.dp))
-                .background(tint)
-        )
+        EqualizerBar(tint, bar1Scale)
+        EqualizerBar(tint, bar2Scale)
+        EqualizerBar(tint, bar3Scale)
     }
+}
+
+@Composable
+private fun EqualizerBar(tint: Color, scale: Float) {
+    Box(
+        modifier = Modifier
+            .width(3.dp)
+            .fillMaxHeight()
+            .graphicsLayer { 
+                scaleY = scale
+                transformOrigin = TransformOrigin(0.5f, 1f)
+            }
+            .clip(RoundedCornerShape(1.5.dp))
+            .background(tint)
+    )
 }

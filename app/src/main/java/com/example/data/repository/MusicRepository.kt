@@ -5,6 +5,7 @@ import com.example.core.model.Artist
 import com.example.core.model.MusicSource
 import com.example.core.model.Song
 import com.example.core.source.LocalMusicSourceProvider
+import com.example.core.source.deezer.DeezerMusicSourceProvider
 import com.example.core.source.youtube.YouTubeDownloadManager
 import com.example.core.source.youtube.YouTubeMusicSourceProvider
 import com.example.data.local.dao.MusicDao
@@ -32,7 +33,8 @@ class MusicRepository(
     private val localProvider: LocalMusicSourceProvider,
     private val musicDao: MusicDao,
     val downloadManager: YouTubeDownloadManager,
-    val youtubeProvider: YouTubeMusicSourceProvider = YouTubeMusicSourceProvider()
+    val youtubeProvider: YouTubeMusicSourceProvider,
+    val deezerProvider: DeezerMusicSourceProvider
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -200,6 +202,11 @@ class MusicRepository(
     // YouTube Search
     suspend fun searchYouTube(query: String): List<Song> = withContext(Dispatchers.IO) {
         youtubeProvider.searchSongs(query)
+    }
+
+    // Deezer Search
+    suspend fun searchDeezer(query: String): List<Song> = withContext(Dispatchers.IO) {
+        deezerProvider.searchSongs(query)
     }
 
     // Download Actions

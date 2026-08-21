@@ -44,14 +44,14 @@ import kotlin.time.Duration.Companion.milliseconds
 enum class SearchFilter(val label: String) {
     ALL("Todo"),
     SONGS("Canciones"),
-    YOUTUBE("YouTube"),
+    DEEZER("Deezer"),
     ARTISTS("Artistas"),
     ALBUMS("Álbumes")
 }
 
 data class SearchUiResult(
     val songs: List<Song> = emptyList(),
-    val youTubeSongs: List<Song> = emptyList(),
+    val deezerSongs: List<Song> = emptyList(),
     val artists: List<Artist> = emptyList(),
     val albums: List<Album> = emptyList()
 )
@@ -87,10 +87,15 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
 
     val playerUiState: StateFlow<PlayerUiState> = playerManager.uiState
 
+    val playbackPositionMs: StateFlow<Long> = playerManager.playbackPositionMs
+
     val servicesState: StateFlow<List<ExternalServiceDescriptor>> = servicesManager.servicesState
 
     private val _youtubeApiKey = MutableStateFlow(configManager.getYouTubeApiKey() ?: "")
     val youtubeApiKey: StateFlow<String> = _youtubeApiKey.asStateFlow()
+
+    private val _rapidApiKey = MutableStateFlow(configManager.getRapidApiKey() ?: "")
+    val rapidApiKey: StateFlow<String> = _rapidApiKey.asStateFlow()
 
     private val _googleClientId = MutableStateFlow(configManager.getGoogleClientId() ?: "")
     val googleClientId: StateFlow<String> = _googleClientId.asStateFlow()
@@ -113,6 +118,9 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
     private val _accentColor = MutableStateFlow(Color(0xFF00E5FF)) // Default NeonCyan
     val accentColor: StateFlow<Color> = _accentColor.asStateFlow()
 
+    private val _themeMode = MutableStateFlow(configManager.getThemeMode())
+    val themeMode: StateFlow<String> = _themeMode.asStateFlow()
+
     // Search History
     private val _searchHistory = MutableStateFlow(configManager.getSearchHistory())
     val searchHistory: StateFlow<List<String>> = _searchHistory.asStateFlow()
@@ -127,6 +135,11 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
             .map { it.currentSong?.id }
             .distinctUntilChanged()
             .onEach { updateThemeForCurrentSong() }
+            .launchIn(viewModelScope)
+
+        // Observe player errors
+        playerManager.errorFlow
+            .onEach { _eventFlow.emit(it) }
             .launchIn(viewModelScope)
     }
 
@@ -183,21 +196,18 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
     private val _searchFilter = MutableStateFlow(SearchFilter.ALL)
     val searchFilter: StateFlow<SearchFilter> = _searchFilter.asStateFlow()
 
-    private val _youTubeSearchResults = MutableStateFlow<List<Song>>(emptyList())
+    private val _deezerSearchResults = MutableStateFlow<List<Song>>(emptyList())
 
-    private val _isSearchingYouTube = MutableStateFlow(false)
-    val isSearchingYouTube: StateFlow<Boolean> = _isSearchingYouTube.asStateFlow()
-
-    private var youTubeSearchJob: Job? = null
+    private var deezerSearchJob: Job? = null
 
     val searchResults: StateFlow<SearchUiResult> = combine(
-        combine(_searchQuery, _searchFilter, _youTubeSearchResults) { query, filter, ytSongs ->
-            Triple(query, filter, ytSongs)
+        combine(_searchQuery, _searchFilter, _deezerSearchResults) { query, filter, dzSongs ->
+            Triple(query, filter, dzSongs)
         },
         combine(songs, artists, albums) { allSongs, allArtists, allAlbums ->
             Triple(allSongs, allArtists, allAlbums)
         }
-    ) { (query, filter, ytSongs), (allSongs, allArtists, allAlbums) ->
+    ) { (query, filter, dzSongs), (allSongs, allArtists, allAlbums) ->
         val q = query.trim().lowercase()
         if (q.isEmpty()) {
             SearchUiResult()
@@ -209,8 +219,8 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
                 }
             } else emptyList()
 
-            val matchedYouTube = if ((filter == SearchFilter.ALL) || (filter == SearchFilter.YOUTUBE)) {
-                ytSongs
+            val matchedDeezer = if ((filter == SearchFilter.ALL) || (filter == SearchFilter.DEEZER)) {
+                dzSongs
             } else emptyList()
 
             val matchedArtists = if ((filter == SearchFilter.ALL) || (filter == SearchFilter.ARTISTS)) {
@@ -223,7 +233,7 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
 
             SearchUiResult(
                 songs = matchedSongs,
-                youTubeSongs = matchedYouTube,
+                deezerSongs = matchedDeezer,
                 artists = matchedArtists,
                 albums = matchedAlbums,
             )
@@ -232,7 +242,7 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
 
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
-        triggerYouTubeSearch(query)
+        triggerDeezerSearch(query)
         if (query.length >= 3) {
             addToSearchHistory(query)
         }
@@ -252,25 +262,21 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
         _searchFilter.value = filter
     }
 
-    private fun triggerYouTubeSearch(query: String) {
-        youTubeSearchJob?.cancel()
+    private fun triggerDeezerSearch(query: String) {
+        deezerSearchJob?.cancel()
         val trimmed = query.trim()
         if (trimmed.length < 2) {
-            _youTubeSearchResults.value = emptyList()
-            _isSearchingYouTube.value = false
+            _deezerSearchResults.value = emptyList()
             return
         }
 
-        youTubeSearchJob = viewModelScope.launch {
-            delay(350.milliseconds) // Debounce typing
-            _isSearchingYouTube.value = true
+        deezerSearchJob = viewModelScope.launch {
+            delay(300.milliseconds)
             try {
-                val results = repository.searchYouTube(trimmed)
-                _youTubeSearchResults.value = results
+                val results = repository.searchDeezer(trimmed)
+                _deezerSearchResults.value = results
             } catch (e: Exception) {
                 e.printStackTrace()
-            } finally {
-                _isSearchingYouTube.value = false
             }
         }
     }
@@ -375,7 +381,15 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             configManager.saveYouTubeApiKey(apiKey)
             _youtubeApiKey.value = apiKey
-            repository.youtubeProvider.authenticate(mapOf("apiKey" to apiKey))
+            repository.youtubeProvider.resolver.updateApiKey(apiKey)
+        }
+    }
+
+    fun updateRapidApiKey(apiKey: String) {
+        viewModelScope.launch {
+            configManager.saveRapidApiKey(apiKey)
+            _rapidApiKey.value = apiKey
+            repository.youtubeProvider.resolver.updateRapidApiKey(apiKey)
         }
     }
 
@@ -419,5 +433,10 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
             configManager.saveGoogleClientId(trimmed)
             _googleClientId.value = trimmed
         }
+    }
+
+    fun updateThemeMode(mode: String) {
+        configManager.saveThemeMode(mode)
+        _themeMode.value = mode
     }
 }

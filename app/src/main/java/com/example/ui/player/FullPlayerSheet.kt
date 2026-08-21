@@ -48,6 +48,7 @@ import com.example.ui.theme.*
 fun FullPlayerSheet(
     playerState: PlayerUiState,
     accentColor: Color,
+    positionMsProvider: () -> Long,
     onDismiss: () -> Unit,
     onTogglePlayPause: () -> Unit,
     onSeekTo: (Long) -> Unit,
@@ -67,21 +68,38 @@ fun FullPlayerSheet(
     val currentSong = playerState.currentSong ?: return
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
+    // Smoothly animate the accent color when it changes
+    val animatedAccentColor by animateColorAsState(
+        targetValue = accentColor,
+        animationSpec = tween(durationMillis = 1000, easing = LinearOutSlowInEasing),
+        label = "accent_color_animation"
+    )
+
     var showTimerDialog by remember { mutableStateOf(false) }
     var showEqDialog by remember { mutableStateOf(false) }
     var isDraggingSlider by remember { mutableStateOf(false) }
     var dragSliderValue by remember { mutableFloatStateOf(0f) }
     var showLyrics by remember { mutableStateOf(false) }
 
+    val currentPositionMs = positionMsProvider()
+    val progress = if (playerState.durationMs > 0) (currentPositionMs.toFloat() / playerState.durationMs.toFloat()).coerceIn(0f, 1f) else 0f
+    
+    val formattedPosition = remember(currentPositionMs) {
+        val totalSec = (currentPositionMs / 1000).coerceAtLeast(0)
+        val min = totalSec / 60
+        val sec = totalSec % 60
+        "%d:%02d".format(min, sec)
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = ObsidianDark,
+        containerColor = MaterialTheme.colorScheme.background,
         scrimColor = Color.Black.copy(alpha = 0.85f),
         dragHandle = null,
         modifier = Modifier.fillMaxHeight()
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             // Immersive Blurred Background
             if (!currentSong.artworkUri.isNullOrBlank()) {
                 AsyncImage(
@@ -125,7 +143,7 @@ fun FullPlayerSheet(
                         Text(
                             text = if (playerState.isKaraokeModeActive) "MODO KARAOKE" else "REPRODUCIENDO",
                             style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 2.sp, fontWeight = FontWeight.Bold),
-                            color = if (playerState.isKaraokeModeActive) NeonPink else accentColor
+                            color = if (playerState.isKaraokeModeActive) NeonPink else animatedAccentColor
                         )
                         Text(
                             text = currentSong.album.ifBlank { "Fusion Music" },
@@ -148,7 +166,7 @@ fun FullPlayerSheet(
                             Icon(
                                 imageVector = Icons.Default.MusicNote,
                                 contentDescription = null,
-                                tint = if (showLyrics) accentColor else TextPrimary
+                                tint = if (showLyrics) animatedAccentColor else TextPrimary
                             )
                         }
                     }
@@ -161,15 +179,15 @@ fun FullPlayerSheet(
                     modifier = Modifier
                         .fillMaxWidth(0.85f)
                         .aspectRatio(1f)
-                        .shadow(40.dp, RoundedCornerShape(24.dp), spotColor = accentColor)
+                        .shadow(40.dp, RoundedCornerShape(24.dp), spotColor = animatedAccentColor)
                         .clip(RoundedCornerShape(24.dp))
-                        .border(1.dp, accentColor.copy(alpha = 0.3f), RoundedCornerShape(24.dp)),
+                        .border(1.dp, animatedAccentColor.copy(alpha = 0.3f), RoundedCornerShape(24.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     if (!currentSong.artworkUri.isNullOrBlank()) {
                         AsyncImage(model = currentSong.artworkUri, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     } else {
-                        Icon(Icons.Default.MusicNote, null, tint = accentColor, modifier = Modifier.size(60.dp))
+                        Icon(Icons.Default.MusicNote, null, tint = animatedAccentColor, modifier = Modifier.size(60.dp))
                     }
                 }
 
@@ -193,19 +211,19 @@ fun FullPlayerSheet(
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
-                NeonVisualizer(playerState.audioSessionId, playerState.isPlaying, if (playerState.isKaraokeModeActive) NeonPink else accentColor)
+                NeonVisualizer(playerState.audioSessionId, playerState.isPlaying, if (playerState.isKaraokeModeActive) NeonPink else animatedAccentColor)
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // Playback Slider
-                val currentSliderValue = if (isDraggingSlider) dragSliderValue else playerState.progress
+                val currentSliderValue = if (isDraggingSlider) dragSliderValue else progress
                 Slider(
                     value = currentSliderValue,
                     onValueChange = { isDraggingSlider = true; dragSliderValue = it },
                     onValueChangeFinished = { isDraggingSlider = false; onSeekTo((dragSliderValue * playerState.durationMs).toLong()) },
-                    colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = if (playerState.isKaraokeModeActive) NeonPink else accentColor)
+                    colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = if (playerState.isKaraokeModeActive) NeonPink else animatedAccentColor)
                 )
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(playerState.positionFormatted, color = TextSecondary)
+                    Text(formattedPosition, color = TextSecondary)
                     Text(playerState.durationFormatted, color = TextSecondary)
                 }
 
@@ -213,25 +231,25 @@ fun FullPlayerSheet(
 
                 // Main Controls
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
-                    IconButton(onClick = onToggleShuffle) { Icon(Icons.Default.Shuffle, null, tint = if (playerState.shuffleMode) accentColor else TextTertiary) }
+                    IconButton(onClick = onToggleShuffle) { Icon(Icons.Default.Shuffle, null, tint = if (playerState.shuffleMode) animatedAccentColor else TextTertiary) }
                     IconButton(onClick = onSkipPrevious) { Icon(Icons.Default.SkipPrevious, null, tint = TextPrimary, modifier = Modifier.size(38.dp)) }
                     Surface(onClick = onTogglePlayPause, shape = CircleShape, color = Color.White, modifier = Modifier.size(68.dp)) {
                         Box(contentAlignment = Alignment.Center) {
-                            if (playerState.isBuffering) CircularProgressIndicator(color = accentColor, modifier = Modifier.size(40.dp))
+                            if (playerState.isBuffering) CircularProgressIndicator(color = animatedAccentColor, modifier = Modifier.size(40.dp))
                             else Icon(if (playerState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(36.dp))
                         }
                     }
                     IconButton(onClick = onSkipNext) { Icon(Icons.Default.SkipNext, null, tint = TextPrimary, modifier = Modifier.size(38.dp)) }
-                    IconButton(onClick = onCycleRepeat) { Icon(if (playerState.repeatMode == DomainRepeatMode.ONE) Icons.Default.RepeatOne else Icons.Default.Repeat, null, tint = if (playerState.repeatMode != DomainRepeatMode.OFF) accentColor else TextTertiary) }
+                    IconButton(onClick = onCycleRepeat) { Icon(if (playerState.repeatMode == DomainRepeatMode.ONE) Icons.Default.RepeatOne else Icons.Default.Repeat, null, tint = if (playerState.repeatMode != DomainRepeatMode.OFF) animatedAccentColor else TextTertiary) }
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
                 
                 // Extra Tools
                 Row(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp).clip(RoundedCornerShape(20.dp)).background(Color.White.copy(alpha = 0.05f)).padding(16.dp), horizontalArrangement = Arrangement.SpaceAround) {
-                    ToolItem(Icons.Default.Timer, if (playerState.sleepTimerMinutesLeft != null) "${playerState.sleepTimerMinutesLeft}m" else "Timer", playerState.sleepTimerMinutesLeft != null, accentColor) { showTimerDialog = true }
-                    ToolItem(Icons.Default.Equalizer, "EQ", true, accentColor) { showEqDialog = true }
-                    ToolItem(Icons.Default.QueueMusic, "Cola", false, accentColor) { onOpenQueue() }
+                    ToolItem(Icons.Default.Timer, if (playerState.sleepTimerMinutesLeft != null) "${playerState.sleepTimerMinutesLeft}m" else "Timer", playerState.sleepTimerMinutesLeft != null, animatedAccentColor) { showTimerDialog = true }
+                    ToolItem(Icons.Default.Equalizer, "EQ", true, animatedAccentColor) { showEqDialog = true }
+                    ToolItem(Icons.Default.QueueMusic, "Cola", false, animatedAccentColor) { onOpenQueue() }
                 }
             }
 
@@ -260,7 +278,7 @@ fun FullPlayerSheet(
                         LyricsDisplay(
                             lyrics = playerState.currentLyrics,
                             currentPositionMs = playerState.currentPositionMs,
-                            accentColor = if (playerState.isKaraokeModeActive) NeonPink else accentColor
+                            animatedAccentColor = if (playerState.isKaraokeModeActive) NeonPink else animatedAccentColor
                         )
                     }
                 }
@@ -323,7 +341,7 @@ fun ToolItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: Strin
 fun LyricsDisplay(
     lyrics: Lyrics?,
     currentPositionMs: Long,
-    accentColor: Color
+    animatedAccentColor: Color
 ) {
     var isLoadingTimeout by remember { mutableStateOf(false) }
     // Constants for fine-tuning
@@ -345,7 +363,7 @@ fun LyricsDisplay(
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Letras no disponibles", color = TextSecondary, textAlign = TextAlign.Center)
             } else Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                CircularProgressIndicator(color = accentColor, modifier = Modifier.size(32.dp))
+                CircularProgressIndicator(color = animatedAccentColor, modifier = Modifier.size(32.dp))
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Buscando...", color = TextSecondary)
             }
@@ -453,7 +471,7 @@ fun LyricsDisplay(
 }
 
 @Composable
-fun NeonVisualizer(audioSessionId: Int, isPlaying: Boolean, accentColor: Color) {
+fun NeonVisualizer(audioSessionId: Int, isPlaying: Boolean, animatedAccentColor: Color) {
     var magnitudes by remember { mutableStateOf(FloatArray(32) { 0.1f }) }
     DisposableEffect(audioSessionId) {
         if (audioSessionId <= 0) return@DisposableEffect onDispose {}
@@ -480,7 +498,7 @@ fun NeonVisualizer(audioSessionId: Int, isPlaying: Boolean, accentColor: Color) 
     }
     Row(modifier = Modifier.fillMaxWidth().height(48.dp), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.Bottom) {
         magnitudes.forEach { mag ->
-            Box(modifier = Modifier.weight(1f).fillMaxHeight(if (isPlaying) mag else 0.1f).clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)).background(Brush.verticalGradient(listOf(accentColor, accentColor.copy(alpha = 0.4f), Color.Transparent))))
+            Box(modifier = Modifier.weight(1f).fillMaxHeight(if (isPlaying) mag else 0.1f).clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)).background(Brush.verticalGradient(listOf(animatedAccentColor, animatedAccentColor.copy(alpha = 0.4f), Color.Transparent))))
         }
     }
 }

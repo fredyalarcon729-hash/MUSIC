@@ -35,7 +35,7 @@ fun StatsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(ObsidianDark)
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
             .padding(horizontal = 20.dp)
     ) {
@@ -47,7 +47,7 @@ fun StatsScreen(
                 fontSize = 28.sp,
                 letterSpacing = 1.sp
             ),
-            color = TextPrimary
+            color = MaterialTheme.colorScheme.onBackground
         )
         Text(
             text = "Tus hábitos y pulso rítmico",
@@ -66,7 +66,7 @@ fun StatsScreen(
             item {
                 Surface(
                     shape = RoundedCornerShape(24.dp),
-                    color = ObsidianSurface,
+                    color = MaterialTheme.colorScheme.surface,
                     border = androidx.compose.foundation.BorderStroke(2.dp, Brush.linearGradient(listOf(NeonPurpleLight, NeonCyan))),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -77,13 +77,13 @@ fun StatsScreen(
                         Text(
                             text = "TIEMPO TOTAL DE ESCUCHA",
                             style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 2.sp),
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text(
                                 text = totalHours.toString(),
                                 style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Black),
-                                color = TextPrimary
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = "h",
@@ -95,7 +95,7 @@ fun StatsScreen(
                             Text(
                                 text = remainingMinutes.toString(),
                                 style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Black),
-                                color = TextPrimary
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = "m",
@@ -122,7 +122,7 @@ fun StatsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(ObsidianSurfaceVariant)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -138,12 +138,12 @@ fun StatsScreen(
                             Text(artist.take(1), color = NeonPurpleLight, fontWeight = FontWeight.Bold)
                         }
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text(artist, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                        Text(artist, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
                     }
                     Text(
                         "$count veces",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -185,9 +185,9 @@ fun StatsScreen(
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("00h", fontSize = 10.sp, color = TextTertiary)
-                    Text("12h", fontSize = 10.sp, color = TextTertiary)
-                    Text("23h", fontSize = 10.sp, color = TextTertiary)
+                    Text("00h", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+                    Text("12h", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+                    Text("23h", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                 }
             }
         }

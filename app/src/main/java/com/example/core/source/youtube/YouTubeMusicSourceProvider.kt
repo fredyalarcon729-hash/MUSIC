@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
  * Supports online catalog search, direct audio stream resolution, and offline downloads.
  */
 class YouTubeMusicSourceProvider(
-    val resolver: YouTubeAudioResolver = YouTubeAudioResolver()
+    val resolver: YouTubeAudioResolver
 ) : MusicSourceProvider {
 
     override val source: MusicSource = MusicSource.YOUTUBE

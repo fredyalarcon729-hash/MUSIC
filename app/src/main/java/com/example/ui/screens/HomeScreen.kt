@@ -54,18 +54,7 @@ import com.example.core.model.PlayerUiState
 import com.example.core.model.Song
 import com.example.ui.components.FusionArtwork
 import com.example.ui.components.SongListItem
-import com.example.ui.theme.NeonCyan
-import com.example.ui.theme.NeonPink
-import com.example.ui.theme.NeonPurpleDark
-import com.example.ui.theme.NeonPurpleLight
-import com.example.ui.theme.ObsidianBorder
-import com.example.ui.theme.ObsidianCard
-import com.example.ui.theme.ObsidianDark
-import com.example.ui.theme.ObsidianSurface
-import com.example.ui.theme.ObsidianSurfaceVariant
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TextTertiary
+import com.example.ui.theme.*
 
 @Composable
 fun HomeScreen(
@@ -88,7 +77,7 @@ fun HomeScreen(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .background(ObsidianDark)
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding(),
         contentPadding = PaddingValues(bottom = 120.dp)
     ) {
@@ -109,7 +98,7 @@ fun HomeScreen(
                             letterSpacing = 1.sp,
                             fontSize = 24.sp
                         ),
-                        color = TextPrimary
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
                         text = "Reproductor Híbrido & Android Auto",
@@ -126,14 +115,14 @@ fun HomeScreen(
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "Escanear música",
-                            tint = if (isScanning) NeonCyan else TextSecondary
+                            tint = if (isScanning) NeonCyan else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
                     Surface(
                         onClick = onNavigateToServices,
                         shape = RoundedCornerShape(12.dp),
-                        color = ObsidianSurfaceVariant,
+                        color = MaterialTheme.colorScheme.surfaceVariant,
                         border = androidx.compose.foundation.BorderStroke(1.dp, NeonPurpleLight.copy(alpha = 0.4f)),
                         modifier = Modifier.testTag("home_services_btn")
                     ) {
@@ -165,7 +154,7 @@ fun HomeScreen(
                         ),
                         RoundedCornerShape(20.dp)
                     ),
-                colors = CardDefaults.cardColors(containerColor = ObsidianSurface)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Box(
                     modifier = Modifier
@@ -173,9 +162,9 @@ fun HomeScreen(
                         .background(
                             Brush.linearGradient(
                                 colors = listOf(
-                                    NeonPurpleDark.copy(alpha = 0.6f),
-                                    ObsidianSurfaceVariant,
-                                    ObsidianSurface
+                                    NeonPurpleDark.copy(alpha = 0.4f),
+                                    MaterialTheme.colorScheme.surfaceVariant,
+                                    MaterialTheme.colorScheme.surface
                                 )
                             )
                         )
@@ -202,7 +191,7 @@ fun HomeScreen(
                             }
                             Text(
                                 text = "${songs.size} pistas listas",
-                                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                                style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                                 fontSize = 12.sp
                             )
                         }
@@ -215,12 +204,12 @@ fun HomeScreen(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 20.sp
                             ),
-                            color = TextPrimary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
 
                         Text(
                             text = "Audio local sin pérdidas, compatibilidad con pantalla de bloqueo y Android Auto.",
-                            style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                            style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                             maxLines = 2,
                             modifier = Modifier.padding(top = 4.dp)
                         )
@@ -247,7 +236,7 @@ fun HomeScreen(
                             Button(
                                 onClick = { onPlayAll(songs, true) },
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = ObsidianCard,
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
                                     contentColor = NeonCyan
                                 ),
                                 border = androidx.compose.foundation.BorderStroke(1.dp, NeonCyan.copy(alpha = 0.5f)),
@@ -278,7 +267,7 @@ fun HomeScreen(
                     Text(
                         text = "Favoritos",
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                        color = TextPrimary
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
                         text = "${favoriteSongs.size} canciones",
@@ -312,7 +301,7 @@ fun HomeScreen(
                 Text(
                     text = "Álbumes en Dispositivo",
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.padding(horizontal = 20.dp)
                 )
 
@@ -345,11 +334,11 @@ fun HomeScreen(
                 Text(
                     text = "Canciones Recientes",
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                    color = TextPrimary
+                    color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
                     text = "${songs.size} pistas",
-                    style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                    style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                     fontSize = 12.sp
                 )
             }
@@ -382,10 +371,10 @@ fun FavoriteSongCard(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(14.dp),
-        color = ObsidianSurfaceVariant,
+        color = MaterialTheme.colorScheme.surfaceVariant,
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
-            if (isCurrent) NeonCyan else ObsidianBorder
+            if (isCurrent) NeonCyan else MaterialTheme.colorScheme.outline
         ),
         modifier = Modifier.width(130.dp)
     ) {
@@ -401,7 +390,7 @@ fun FavoriteSongCard(
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (isCurrent) NeonCyan else TextPrimary
+                    color = if (isCurrent) NeonCyan else MaterialTheme.colorScheme.onSurface
                 ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -410,7 +399,7 @@ fun FavoriteSongCard(
                 text = song.artist,
                 style = MaterialTheme.typography.bodyMedium.copy(
                     fontSize = 11.sp,
-                    color = TextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -427,8 +416,8 @@ fun AlbumCard(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(14.dp),
-        color = ObsidianSurface,
-        border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder),
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         modifier = Modifier.width(130.dp)
     ) {
         Column(modifier = Modifier.padding(8.dp)) {
@@ -443,7 +432,7 @@ fun AlbumCard(
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary
+                    color = MaterialTheme.colorScheme.onSurface
                 ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -452,7 +441,7 @@ fun AlbumCard(
                 text = "${album.artist} • ${album.songCount} pistas",
                 style = MaterialTheme.typography.bodyMedium.copy(
                     fontSize = 11.sp,
-                    color = TextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis

@@ -8,6 +8,7 @@ import com.example.core.auth.AuthManager
 import com.example.core.source.ConfigManager
 import com.example.core.source.ExternalServicesManager
 import com.example.core.source.LocalMusicSourceProvider
+import com.example.core.source.deezer.DeezerMusicSourceProvider
 import com.example.core.source.youtube.YouTubeAudioResolver
 import com.example.core.source.youtube.YouTubeDownloadManager
 import com.example.core.source.youtube.YouTubeMusicSourceProvider
@@ -27,6 +28,9 @@ class FusionApplication : Application() {
         private set
 
     lateinit var youTubeProvider: YouTubeMusicSourceProvider
+        private set
+
+    lateinit var deezerProvider: DeezerMusicSourceProvider
         private set
 
     lateinit var configManager: ConfigManager
@@ -55,19 +59,22 @@ class FusionApplication : Application() {
         configManager = ConfigManager(this)
         database = FusionDatabase.getInstance(this)
         localProvider = LocalMusicSourceProvider(this)
-        val resolver = YouTubeAudioResolver(configManager.getYouTubeApiKey())
+        val resolver = YouTubeAudioResolver(this, configManager.getYouTubeApiKey(), null, configManager.getRapidApiKey())
         youTubeProvider = YouTubeMusicSourceProvider(resolver)
+        deezerProvider = DeezerMusicSourceProvider()
         downloadManager = YouTubeDownloadManager(this, database.musicDao(), resolver)
 
         servicesManager = ExternalServicesManager(this, localProvider).apply {
             registerProvider(youTubeProvider)
+            registerProvider(deezerProvider)
         }
 
         musicRepository = MusicRepository(
             localProvider = localProvider,
             musicDao = database.musicDao(),
             downloadManager = downloadManager,
-            youtubeProvider = youTubeProvider
+            youtubeProvider = youTubeProvider,
+            deezerProvider = deezerProvider
         )
         authManager = AuthManager(this)
         playerManager = FusionPlayerManager.getInstance(this)

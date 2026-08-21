@@ -51,17 +51,7 @@ import com.example.core.model.PlayerUiState
 import com.example.core.model.Playlist
 import com.example.core.model.Song
 import com.example.ui.components.SongListItem
-import com.example.ui.theme.NeonCyan
-import com.example.ui.theme.NeonPink
-import com.example.ui.theme.NeonPurpleLight
-import com.example.ui.theme.ObsidianBorder
-import com.example.ui.theme.ObsidianCard
-import com.example.ui.theme.ObsidianDark
-import com.example.ui.theme.ObsidianSurface
-import com.example.ui.theme.ObsidianSurfaceVariant
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TextTertiary
+import com.example.ui.theme.*
 import kotlinx.coroutines.flow.Flow
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -87,7 +77,7 @@ fun PlaylistsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(ObsidianDark)
+            .background(MaterialTheme.colorScheme.background)
             .padding(top = 16.dp)
     ) {
         // Header
@@ -104,7 +94,7 @@ fun PlaylistsScreen(
                     fontWeight = FontWeight.Bold,
                     fontSize = 24.sp
                 ),
-                color = TextPrimary
+                color = MaterialTheme.colorScheme.onBackground
             )
 
             Button(
@@ -141,7 +131,7 @@ fun PlaylistsScreen(
                         )
                     },
                     shape = RoundedCornerShape(14.dp),
-                    color = ObsidianSurface,
+                    color = MaterialTheme.colorScheme.surface,
                     border = androidx.compose.foundation.BorderStroke(1.dp, NeonPink.copy(alpha = 0.4f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -170,11 +160,11 @@ fun PlaylistsScreen(
                             Text(
                                 text = "Mis Favoritos",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = TextPrimary
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = "${favoriteSongs.size} canciones guardadas",
-                                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                                style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                                 fontSize = 12.sp
                             )
                         }
@@ -187,8 +177,8 @@ fun PlaylistsScreen(
                 Surface(
                     onClick = { selectedPlaylist = playlist },
                     shape = RoundedCornerShape(14.dp),
-                    color = ObsidianSurface,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder),
+                    color = MaterialTheme.colorScheme.surface,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -216,11 +206,11 @@ fun PlaylistsScreen(
                             Text(
                                 text = playlist.name,
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = TextPrimary
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = playlist.description.ifBlank { "Playlist personalizada" },
-                                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                                style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                                 fontSize = 12.sp
                             )
                         }
@@ -232,7 +222,7 @@ fun PlaylistsScreen(
                             Icon(
                                 imageVector = Icons.Default.Delete,
                                 contentDescription = "Eliminar playlist",
-                                tint = TextTertiary,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -255,7 +245,7 @@ fun PlaylistsScreen(
 
         ModalBottomSheet(
             onDismissRequest = { selectedPlaylist = null },
-            containerColor = ObsidianDark
+            containerColor = MaterialTheme.colorScheme.surface
         ) {
             Column(
                 modifier = Modifier
@@ -288,7 +278,7 @@ fun PlaylistsScreen(
                         Text(
                             text = playlist.name,
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                            color = TextPrimary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "${playlistSongs.size} canciones",
@@ -321,7 +311,7 @@ fun PlaylistsScreen(
                                 onPlayAll(playlistSongs, true)
                                 selectedPlaylist = null
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = ObsidianCard, contentColor = NeonCyan),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = NeonCyan),
                             border = androidx.compose.foundation.BorderStroke(1.dp, NeonCyan),
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier.weight(1f)
@@ -360,7 +350,7 @@ fun PlaylistsScreen(
                     ) {
                         Text(
                             text = "Esta lista está vacía.\nAñade canciones desde tu biblioteca.",
-                            style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                            style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                     }

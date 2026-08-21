@@ -40,18 +40,19 @@ private val FusionLightColorScheme = lightColorScheme(
     onPrimaryContainer = Color(0xFF22005D),
     secondary = Color(0xFF007A8A),
     onSecondary = Color.White,
-    background = Color(0xFFF7F7FC),
+    background = Color(0xFFF7F7FC), // Real light background
     onBackground = Color(0xFF14141E),
     surface = Color(0xFFFFFFFF),
     onSurface = Color(0xFF14141E),
     surfaceVariant = Color(0xFFEAEAF2),
     onSurfaceVariant = Color(0xFF49454F),
-    outline = Color(0xFFCAC4D0)
+    outline = Color(0xFFCAC4D0),
+    outlineVariant = Color(0xFFE0E0E0)
 )
 
 @Composable
 fun FusionMusicTheme(
-    darkTheme: Boolean = true, // Default to sleek dark mode for music experience
+    darkTheme: Boolean = true,
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
@@ -82,4 +83,3 @@ fun MyApplicationTheme(
 ) {
     FusionMusicTheme(darkTheme = darkTheme, dynamicColor = dynamicColor, content = content)
 }
-

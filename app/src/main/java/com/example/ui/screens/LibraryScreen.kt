@@ -69,18 +69,7 @@ import com.example.core.model.PlayerUiState
 import com.example.core.model.Song
 import com.example.ui.components.FusionArtwork
 import com.example.ui.components.SongListItem
-import com.example.ui.theme.NeonCyan
-import com.example.ui.theme.NeonGreen
-import com.example.ui.theme.NeonPink
-import com.example.ui.theme.NeonPurpleLight
-import com.example.ui.theme.ObsidianBorder
-import com.example.ui.theme.ObsidianCard
-import com.example.ui.theme.ObsidianDark
-import com.example.ui.theme.ObsidianSurface
-import com.example.ui.theme.ObsidianSurfaceVariant
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TextTertiary
+import com.example.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,10 +93,10 @@ fun LibraryScreen(
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf(
-        "Canciones (${songs.size})",
-        "Descargas (${downloadedSongs.size})",
-        "Álbumes (${albums.size})",
-        "Artistas (${artists.size})"
+        "Canciones",
+        "Descargas",
+        "Álbumes",
+        "Artistas"
     )
 
     var selectedAlbumForDetail by remember { mutableStateOf<Album?>(null) }
@@ -121,7 +110,7 @@ fun LibraryScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(ObsidianDark)
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
         // Title
@@ -131,16 +120,16 @@ fun LibraryScreen(
                 fontWeight = FontWeight.Bold,
                 fontSize = 24.sp
             ),
-            color = TextPrimary,
+            color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
         )
 
         // Tab Selector
         PrimaryTabRow(
             selectedTabIndex = selectedTab,
-            containerColor = ObsidianDark,
+            containerColor = MaterialTheme.colorScheme.background,
             contentColor = NeonCyan,
-            divider = { Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(ObsidianBorder)) }
+            divider = { Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant)) }
         ) {
             tabs.forEachIndexed { index, title ->
                 Tab(
@@ -150,7 +139,7 @@ fun LibraryScreen(
                         Text(
                             text = title,
                             fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
-                            color = if (selectedTab == index) NeonCyan else TextSecondary,
+                            color = if (selectedTab == index) NeonCyan else MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp
                         )
                     }
@@ -190,7 +179,7 @@ fun LibraryScreen(
                             Button(
                                 onClick = { onPlayAll(songs, true) },
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = ObsidianCard,
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
                                     contentColor = NeonCyan
                                 ),
                                 border = androidx.compose.foundation.BorderStroke(1.dp, NeonCyan.copy(alpha = 0.4f)),
@@ -232,7 +221,7 @@ fun LibraryScreen(
                         // Downloads Header Summary Banner
                         Surface(
                             shape = RoundedCornerShape(16.dp),
-                            color = ObsidianSurfaceVariant,
+                            color = MaterialTheme.colorScheme.surfaceVariant,
                             border = androidx.compose.foundation.BorderStroke(1.dp, NeonCyan.copy(alpha = 0.3f)),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -264,11 +253,11 @@ fun LibraryScreen(
                                             Text(
                                                 text = "Música Offline Guardada",
                                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                                color = TextPrimary
+                                                color = MaterialTheme.colorScheme.onSurface
                                             )
                                             Text(
                                                 text = "${downloadedSongs.size} canciones descargadas • $formattedTotalStorage ocupados",
-                                                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary, fontSize = 12.sp)
+                                                style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                                             )
                                         }
                                     }
@@ -294,7 +283,7 @@ fun LibraryScreen(
                                         Button(
                                             onClick = { onPlayAll(downloadedSongs, true) },
                                             colors = ButtonDefaults.buttonColors(
-                                                containerColor = ObsidianCard,
+                                                containerColor = MaterialTheme.colorScheme.surface,
                                                 contentColor = NeonPurpleLight
                                             ),
                                             border = androidx.compose.foundation.BorderStroke(1.dp, NeonPurpleLight.copy(alpha = 0.5f)),
@@ -323,7 +312,7 @@ fun LibraryScreen(
                                     modifier = Modifier
                                         .size(64.dp)
                                         .clip(CircleShape)
-                                        .background(ObsidianSurfaceVariant),
+                                        .background(MaterialTheme.colorScheme.surfaceVariant),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
@@ -337,32 +326,17 @@ fun LibraryScreen(
                                 Text(
                                     text = "Sin descargas offline",
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = TextPrimary
+                                    color = MaterialTheme.colorScheme.onBackground
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = "Busca tus canciones favoritas en YouTube Music y presiona «Descargar» para reproducirlas en cualquier lugar sin conexión a internet.",
+                                    text = "Busca tus canciones favoritas y presiona «Descargar» para reproducirlas en cualquier lugar sin conexión a internet.",
                                     style = MaterialTheme.typography.bodyMedium.copy(
-                                        color = TextTertiary,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         textAlign = TextAlign.Center,
                                         lineHeight = 20.sp
                                     )
                                 )
-                                Spacer(modifier = Modifier.height(20.dp))
-                                if (onNavigateToSearch != null) {
-                                    Button(
-                                        onClick = onNavigateToSearch,
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = NeonPurpleLight,
-                                            contentColor = Color.Black
-                                        ),
-                                        shape = RoundedCornerShape(12.dp)
-                                    ) {
-                                        Icon(Icons.Default.Search, null, modifier = Modifier.size(18.dp))
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Buscar en YouTube", fontWeight = FontWeight.Bold)
-                                    }
-                                }
                             }
                         }
                     } else {
@@ -398,8 +372,8 @@ fun LibraryScreen(
                         Surface(
                             onClick = { selectedAlbumForDetail = album },
                             shape = RoundedCornerShape(14.dp),
-                            color = ObsidianSurface,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder)
+                            color = MaterialTheme.colorScheme.surface,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                         ) {
                             Column(modifier = Modifier.padding(10.dp)) {
                                 FusionArtwork(
@@ -415,14 +389,14 @@ fun LibraryScreen(
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 14.sp
                                     ),
-                                    color = TextPrimary,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
                                     text = album.artist,
                                     style = MaterialTheme.typography.bodyMedium.copy(
-                                        color = TextSecondary,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontSize = 12.sp
                                     ),
                                     maxLines = 1,
@@ -479,11 +453,11 @@ fun LibraryScreen(
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 15.sp
                                     ),
-                                    color = TextPrimary
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
                                     text = "${artist.songCount} canciones • ${artist.albumCount} álbumes",
-                                    style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                                    style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                                     fontSize = 12.sp
                                 )
                             }
@@ -499,7 +473,7 @@ fun LibraryScreen(
         val albumSongs = songs.filter { it.album == album.title }
         ModalBottomSheet(
             onDismissRequest = { selectedAlbumForDetail = null },
-            containerColor = ObsidianDark
+            containerColor = MaterialTheme.colorScheme.surface
         ) {
             Column(
                 modifier = Modifier
@@ -517,7 +491,7 @@ fun LibraryScreen(
                         Text(
                             text = album.title,
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                            color = TextPrimary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = album.artist,
@@ -525,7 +499,7 @@ fun LibraryScreen(
                         )
                         Text(
                             text = "${albumSongs.size} pistas",
-                            style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                            style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                             fontSize = 11.sp
                         )
                     }
@@ -553,7 +527,7 @@ fun LibraryScreen(
                             onPlayAll(albumSongs, true)
                             selectedAlbumForDetail = null
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = ObsidianCard, contentColor = NeonCyan),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = NeonCyan),
                         border = androidx.compose.foundation.BorderStroke(1.dp, NeonCyan),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.weight(1f)
@@ -594,7 +568,7 @@ fun LibraryScreen(
         val artistSongs = songs.filter { it.artist == artist.name }
         ModalBottomSheet(
             onDismissRequest = { selectedArtistForDetail = null },
-            containerColor = ObsidianDark
+            containerColor = MaterialTheme.colorScheme.surface
         ) {
             Column(
                 modifier = Modifier
@@ -605,7 +579,7 @@ fun LibraryScreen(
                 Text(
                     text = artist.name,
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                    color = TextPrimary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "${artistSongs.size} canciones en tu biblioteca",

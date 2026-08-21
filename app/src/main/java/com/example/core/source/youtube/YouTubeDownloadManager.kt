@@ -35,7 +35,7 @@ import java.util.concurrent.TimeUnit
 class YouTubeDownloadManager(
     private val context: Context,
     private val musicDao: MusicDao,
-    private val resolver: YouTubeAudioResolver = YouTubeAudioResolver()
+    private val resolver: YouTubeAudioResolver
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 

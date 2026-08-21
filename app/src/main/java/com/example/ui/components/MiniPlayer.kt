@@ -53,6 +53,7 @@ import com.example.ui.theme.TextSecondary
 @Composable
 fun MiniPlayer(
     playerState: PlayerUiState,
+    progressProvider: () -> Float,
     onExpandPlayer: () -> Unit,
     onTogglePlayPause: () -> Unit,
     onSkipNext: () -> Unit,
@@ -74,29 +75,29 @@ fun MiniPlayer(
                     .shadow(16.dp, RoundedCornerShape(16.dp), spotColor = NeonPurpleLight)
                     .clip(RoundedCornerShape(16.dp))
                     .border(
-                        1.dp,
-                        Brush.horizontalGradient(
+                        0.5.dp,
+                        Brush.linearGradient(
                             colors = listOf(
-                                NeonPurpleLight.copy(alpha = 0.6f),
-                                NeonCyan.copy(alpha = 0.4f),
-                                ObsidianBorder
+                                NeonPurpleLight.copy(alpha = 0.4f),
+                                NeonCyan.copy(alpha = 0.2f),
+                                Color.Transparent
                             )
                         ),
                         RoundedCornerShape(16.dp)
                     )
                     .clickable(onClick = onExpandPlayer)
                     .testTag("mini_player_bar"),
-                color = ObsidianSurfaceVariant.copy(alpha = 0.95f)
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f)
             ) {
                 Column {
-                    // Top Progress Bar
+                    // Top Progress Bar - Uses lambda to avoid full recomposition
                     LinearProgressIndicator(
-                        progress = { playerState.progress },
+                        progress = progressProvider,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(2.5.dp),
                         color = NeonCyan,
-                        trackColor = ObsidianBorder
+                        trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
                     )
 
                     Row(

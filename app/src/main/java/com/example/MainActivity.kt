@@ -13,6 +13,8 @@ import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -20,6 +22,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,7 +63,15 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            FusionMusicTheme {
+            val themeMode by viewModel.themeMode.collectAsState()
+            val isDarkTheme = when (themeMode) {
+                "light" -> false
+                "dark" -> true
+                "system" -> androidx.compose.foundation.isSystemInDarkTheme()
+                else -> true // Default to Dark
+            }
+
+            FusionMusicTheme(darkTheme = isDarkTheme) {
                 MainAppContent(viewModel = viewModel)
             }
         }
@@ -109,11 +120,17 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
     }
 
     // State Collection
+    val themeMode by viewModel.themeMode.collectAsState()
+    val isDarkTheme = when (themeMode) {
+        "light" -> false
+        "dark" -> true
+        else -> androidx.compose.foundation.isSystemInDarkTheme()
+    }
+
     val songs by viewModel.songs.collectAsState()
     val downloadedSongs by viewModel.downloadedSongs.collectAsState()
     val totalStorageBytes by viewModel.totalDownloadedStorageBytes.collectAsState()
     val downloadStates by viewModel.downloadStates.collectAsState()
-    val isSearchingYouTube by viewModel.isSearchingYouTube.collectAsState()
 
     val albums by viewModel.albums.collectAsState()
     val artists by viewModel.artists.collectAsState()
@@ -125,6 +142,7 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
     val youtubeApiKey by viewModel.youtubeApiKey.collectAsState()
     val googleClientId by viewModel.googleClientId.collectAsState()
     val accentColor by viewModel.accentColor.collectAsState()
+    val playbackPosition by viewModel.playbackPositionMs.collectAsState()
 
     val searchQuery by viewModel.searchQuery.collectAsState()
     val searchFilter by viewModel.searchFilter.collectAsState()
@@ -162,13 +180,14 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
     val onRescan: () -> Unit = remember(viewModel) { { viewModel.rescanLocalLibrary() } }
 
     Scaffold(
-        containerColor = ObsidianDark,
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             if (!isViewingServices) {
                 Column(modifier = Modifier.navigationBarsPadding()) {
                     // Mini Player (Only visible if a song is loaded)
                     MiniPlayer(
                         playerState = playerState,
+                        progressProvider = { playerState.progress }, // This will still recompose MiniPlayer on position change because it's accessing playerState.progress
                         onExpandPlayer = { isFullPlayerExpanded = true },
                         onTogglePlayPause = { viewModel.togglePlayPause() },
                         onSkipNext = { viewModel.skipToNext() }
@@ -186,7 +205,7 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(ObsidianDark)
+                .background(MaterialTheme.colorScheme.background)
                 .padding(innerPadding)
         ) {
             if (isViewingServices) {
@@ -206,7 +225,11 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
             } else {
                 AnimatedContent(
                     targetState = currentDestination,
-                    transitionSpec = { fadeIn() togetherWith fadeOut() },
+                    transitionSpec = {
+                        val direction = if (targetState.ordinal > initialState.ordinal) 1 else -1
+                        (slideInHorizontally { width -> direction * width } + fadeIn())
+                            .togetherWith(slideOutHorizontally { width -> -direction * width } + fadeOut())
+                    },
                     label = "screen_transition"
                 ) { target ->
                     when (target) {
@@ -253,7 +276,6 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
                             searchResults = searchResults,
                             playerState = playerState,
                             allSongs = songs,
-                            isSearchingYouTube = isSearchingYouTube,
                             downloadStates = downloadStates,
                             searchHistory = searchHistory,
                             onQueryChanged = { viewModel.updateSearchQuery(it) },
@@ -294,10 +316,12 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
                         FusionNavDestination.SETTINGS -> SettingsScreen(
                             playerState = playerState,
                             isScanning = isScanning,
+                            themeMode = themeMode,
                             onRescan = onRescan,
                             onSelectEqualizer = { viewModel.setEqualizerPreset(it) },
                             onSelectSleepTimer = { viewModel.setSleepTimer(it) },
                             onToggleSkipSilence = { viewModel.setSkipSilenceEnabled(it) },
+                            onSetThemeMode = { viewModel.updateThemeMode(it) },
                             onNavigateToServices = { isViewingServices = true }
                         )
                     }
@@ -311,6 +335,7 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
         FullPlayerSheet(
             playerState = playerState,
             accentColor = accentColor,
+            positionMsProvider = { playbackPosition },
             onDismiss = { isFullPlayerExpanded = false },
             onTogglePlayPause = { viewModel.togglePlayPause() },
             onSeekTo = { viewModel.seekTo(it) },

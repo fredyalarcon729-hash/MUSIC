@@ -20,8 +20,8 @@ data class ExternalServiceDescriptor(
 )
 
 /**
- * Registry & Manager for external music service modules (Spotify, YouTube Music, Tidal, Deezer).
- * Provides a clean architecture ready for official SDK/OAuth2 integrations.
+ * Registry & Manager for external music service modules.
+ * Simplified (v18.0) to prioritize stable Deezer and Local sources.
  */
 class ExternalServicesManager(
     private val context: Context,
@@ -60,54 +60,32 @@ class ExternalServicesManager(
                 officialRequirements = "Permisos READ_MEDIA_AUDIO / Almacenamiento local"
             ),
             ExternalServiceDescriptor(
-                source = MusicSource.SPOTIFY,
-                title = "Spotify",
-                description = "Conexión oficial mediante Spotify App Remote SDK y Web API.",
-                apiDocUrl = "https://developer.spotify.com/documentation/android",
-                sdkType = "Spotify App Remote SDK + OAuth2 Web API",
-                isConnected = false,
-                isEnabled = false,
-                badgeColorHex = 0xFF1DB954,
-                officialRequirements = "Requiere Spotify Client ID y autenticación OAuth2 oficial"
+                source = MusicSource.DEEZER,
+                title = "Deezer Music (Recomendado)",
+                description = "Streaming estable de alta fidelidad. Ideal para música latina y lanzamientos globales.",
+                apiDocUrl = "https://developers.deezer.com/sdk/android",
+                sdkType = "Deezer API Direct Stream",
+                isConnected = true,
+                isEnabled = true,
+                badgeColorHex = 0xFFFF007F,
+                officialRequirements = "Módulo oficial activado con streaming de alta velocidad"
             ),
             ExternalServiceDescriptor(
                 source = MusicSource.YOUTUBE,
-                title = "YouTube Music",
-                description = "Búsqueda integrada, reproducción nativa y descargas offline de audio de alta fidelidad.",
+                title = "YouTube Music (Mantenimiento)",
+                description = "Búsqueda integrada y reproducción. Actualmente en mantenimiento para mejorar estabilidad.",
                 apiDocUrl = "https://developers.google.com/youtube/v3",
-                sdkType = "YouTube Innertube + Media3 ExoPlayer Audio Engine",
-                isConnected = true,
-                isEnabled = true,
-                badgeColorHex = 0xFFFF0000,
-                officialRequirements = "Integración completa nativa con streaming y descargas habilitadas"
-            ),
-            ExternalServiceDescriptor(
-                source = MusicSource.TIDAL,
-                title = "TIDAL Hi-Fi",
-                description = "Módulo de transmisión de alta fidelidad vía TIDAL Developer API.",
-                apiDocUrl = "https://developer.tidal.com/",
-                sdkType = "TIDAL Open API OAuth2",
+                sdkType = "YouTube Data API v3",
                 isConnected = false,
                 isEnabled = false,
-                badgeColorHex = 0xFF00FFFF,
-                officialRequirements = "Módulo preparado para Client Credentials y streaming Lossless"
-            ),
-            ExternalServiceDescriptor(
-                source = MusicSource.DEEZER,
-                title = "Deezer Music",
-                description = "Módulo de catálogo y listas personalizadas mediante Deezer Android SDK.",
-                apiDocUrl = "https://developers.deezer.com/sdk/android",
-                sdkType = "Deezer REST API + Android SDK",
-                isConnected = false,
-                isEnabled = false,
-                badgeColorHex = 0xFFFF007F,
-                officialRequirements = "Módulo modular para Deezer App ID y token de usuario"
+                badgeColorHex = 0xFF666666,
+                officialRequirements = "Servicio temporalmente deshabilitado"
             )
         )
     }
 
     suspend fun toggleService(source: MusicSource, enable: Boolean) {
-        // Toggle simulation for external providers until official credentials are provided
+        // Toggle simulation for external providers
         _servicesState.value = _servicesState.value.map { descriptor ->
             if (descriptor.source == source) {
                 descriptor.copy(isEnabled = enable, isConnected = enable)

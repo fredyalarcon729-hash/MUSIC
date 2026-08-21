@@ -13,9 +13,25 @@ class ConfigManager(context: Context) {
 
     companion object {
         private const val KEY_YOUTUBE_API_KEY = "youtube_api_key"
+        private const val KEY_RAPID_API_KEY = "rapid_api_key"
         private const val KEY_GOOGLE_CLIENT_ID = "google_client_id"
+        private const val KEY_THEME_MODE = "theme_mode" // "system", "light", "dark"
         private const val KEY_SEARCH_HISTORY = "search_history"
         private const val MAX_HISTORY_ITEMS = 10
+    }
+
+    /**
+     * Get the stored theme mode.
+     */
+    fun getThemeMode(): String {
+        return prefs.getString(KEY_THEME_MODE, "dark") ?: "dark"
+    }
+
+    /**
+     * Save the theme mode.
+     */
+    fun saveThemeMode(mode: String) {
+        prefs.edit { putString(KEY_THEME_MODE, mode) }
     }
 
     /**
@@ -30,6 +46,20 @@ class ConfigManager(context: Context) {
      */
     fun saveYouTubeApiKey(apiKey: String?) {
         prefs.edit { putString(KEY_YOUTUBE_API_KEY, apiKey) }
+    }
+
+    /**
+     * Get the stored RapidAPI key.
+     */
+    fun getRapidApiKey(): String? {
+        return prefs.getString(KEY_RAPID_API_KEY, null)
+    }
+
+    /**
+     * Save the RapidAPI key.
+     */
+    fun saveRapidApiKey(apiKey: String?) {
+        prefs.edit { putString(KEY_RAPID_API_KEY, apiKey) }
     }
 
     /**

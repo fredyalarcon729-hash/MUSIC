@@ -1,6 +1,8 @@
 package com.example.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
@@ -16,6 +18,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
@@ -51,9 +54,13 @@ fun FusionBottomNav(
     modifier: Modifier = Modifier
 ) {
     NavigationBar(
-        containerColor = ObsidianDark,
-        tonalElevation = 8.dp,
-        modifier = modifier
+        containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
+        tonalElevation = 0.dp,
+        modifier = modifier.border(
+            0.5.dp, 
+            Brush.verticalGradient(listOf(ObsidianBorder.copy(alpha = 0.5f), Color.Transparent)),
+            RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        )
     ) {
         FusionNavDestination.values().forEach { destination ->
             val isSelected = currentDestination == destination

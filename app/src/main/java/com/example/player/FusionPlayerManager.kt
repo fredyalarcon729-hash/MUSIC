@@ -29,8 +29,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
@@ -51,7 +54,7 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
     private var sleepTimerJob: Job? = null
     private var lyricsFetchJob: Job? = null
     
-    private val youTubeResolver = YouTubeAudioResolver()
+    private val youTubeResolver = YouTubeAudioResolver(applicationContext)
     private val lyricsResolver = LyricsResolver()
 
     private val vocalProcessor = VocalRemovalProcessor()
@@ -86,6 +89,12 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
 
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
+
+    private val _playbackPositionMs = MutableStateFlow(0L)
+    val playbackPositionMs: StateFlow<Long> = _playbackPositionMs.asStateFlow()
+
+    private val _errorFlow = kotlinx.coroutines.flow.MutableSharedFlow<String>()
+    val errorFlow = _errorFlow.asSharedFlow()
 
     private var onSongCompletedCallback: ((Song) -> Unit)? = null
 
@@ -185,7 +194,7 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
     }
 
     fun playSong(song: Song, queue: List<Song> = listOf(song), startIndex: Int = queue.indexOf(song).coerceAtLeast(0)) {
-        Log.d(TAG, "playSong: Loading ${song.title}")
+        Log.d(TAG, "playSong: Cargando ${song.title}")
         startService()
         scope.launch {
             _uiState.update {
@@ -200,14 +209,7 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
             }
             fetchLyricsForSong(song)
 
-            val resolvedUri = if ((song.source == MusicSource.YOUTUBE) && !song.isDownloaded && song.mediaUri.contains("youtube.com/watch")) {
-                youTubeResolver.resolveAudioStreamUrl(song.id) ?: song.mediaUri
-            } else {
-                song.mediaUri
-            }
-
             val mediaItems = queue.map { track ->
-                val finalUri = if (track.id == song.id) resolvedUri else track.mediaUri
                 val metadata = MediaMetadata.Builder()
                     .setTitle(track.title)
                     .setArtist(track.artist)
@@ -217,7 +219,7 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
 
                 MediaItem.Builder()
                     .setMediaId(track.id)
-                    .setUri(finalUri)
+                    .setUri(track.mediaUri)
                     .setMediaMetadata(metadata)
                     .build()
             }
@@ -228,8 +230,9 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
             
             _uiState.update {
                 it.copy(
-                    currentSong = song.copy(mediaUri = resolvedUri),
-                    isBuffering = false
+                    currentSong = song,
+                    isBuffering = false,
+                    isPlaying = true
                 )
             }
         }
@@ -397,12 +400,17 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
                     val dur = exoPlayer.duration.coerceAtLeast(0L)
                     val buf = exoPlayer.bufferedPosition.coerceAtLeast(0L)
                     
-                    _uiState.update {
-                        it.copy(
-                            currentPositionMs = pos,
-                            durationMs = if (dur > 0) dur else it.durationMs,
-                            bufferedPositionMs = buf
-                        )
+                    _playbackPositionMs.value = pos
+
+                    // Only update the heavy UI state if duration or buffer significantly changed
+                    val currentState = _uiState.value
+                    if (currentState.durationMs != dur || (buf - currentState.bufferedPositionMs) > 1000) {
+                        _uiState.update {
+                            it.copy(
+                                durationMs = if (dur > 0) dur else it.durationMs,
+                                bufferedPositionMs = buf
+                            )
+                        }
                     }
                 }
                 delay(100L)

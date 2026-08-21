@@ -18,18 +18,22 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
@@ -69,10 +73,12 @@ import com.example.ui.theme.TextTertiary
 fun SettingsScreen(
     playerState: PlayerUiState,
     isScanning: Boolean,
+    themeMode: String,
     onRescan: () -> Unit,
     onSelectEqualizer: (EqualizerPreset) -> Unit,
     onSelectSleepTimer: (Int?) -> Unit,
     onToggleSkipSilence: (Boolean) -> Unit,
+    onSetThemeMode: (String) -> Unit,
     onNavigateToServices: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -82,7 +88,7 @@ fun SettingsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(ObsidianDark)
+            .background(MaterialTheme.colorScheme.background)
             .padding(top = 16.dp)
     ) {
         Text(
@@ -91,7 +97,7 @@ fun SettingsScreen(
                 fontWeight = FontWeight.Bold,
                 fontSize = 24.sp
             ),
-            color = TextPrimary,
+            color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(horizontal = 20.dp)
         )
 
@@ -107,7 +113,7 @@ fun SettingsScreen(
                 Surface(
                     onClick = onNavigateToServices,
                     shape = RoundedCornerShape(16.dp),
-                    color = ObsidianSurfaceVariant,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
                     border = androidx.compose.foundation.BorderStroke(1.dp, NeonPurpleLight.copy(alpha = 0.5f)),
                     modifier = Modifier.fillMaxWidth().testTag("settings_services_item")
                 ) {
@@ -131,16 +137,73 @@ fun SettingsScreen(
                             Text(
                                 text = "Servicios y Plataformas",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = TextPrimary
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = "YouTube, Spotify, TIDAL, Deezer y fuentes locales",
-                                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                                style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                                 fontSize = 12.sp
                             )
                         }
 
-                        Icon(Icons.Default.ChevronRight, null, tint = TextSecondary)
+                        Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+
+            // Appearance Section
+            item {
+                Text(
+                    text = "APARIENCIA Y PERSONALIZACIÓN",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        color = NeonCyan,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    ),
+                    modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+                )
+            }
+
+            item {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Tema de la Aplicación",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            ThemeModeOption(
+                                title = "Claro",
+                                icon = Icons.Default.LightMode,
+                                isSelected = themeMode == "light",
+                                onClick = { onSetThemeMode("light") },
+                                modifier = Modifier.weight(1f)
+                            )
+                            ThemeModeOption(
+                                title = "Oscuro",
+                                icon = Icons.Default.DarkMode,
+                                isSelected = themeMode == "dark",
+                                onClick = { onSetThemeMode("dark") },
+                                modifier = Modifier.weight(1f)
+                            )
+                            ThemeModeOption(
+                                title = "Sistema",
+                                icon = Icons.Default.Settings,
+                                isSelected = themeMode == "system",
+                                onClick = { onSetThemeMode("system") },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
                 }
             }
@@ -201,8 +264,8 @@ fun SettingsScreen(
             item {
                 Surface(
                     shape = RoundedCornerShape(14.dp),
-                    color = ObsidianSurface,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder),
+                    color = MaterialTheme.colorScheme.surface,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -212,8 +275,8 @@ fun SettingsScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Omitir Silencios", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
-                                Text("Recorta silencios al inicio/fin", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                                Text("Omitir Silencios", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                                Text("Recorta silencios al inicio/fin", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Switch(
                                 checked = playerState.isSkipSilenceEnabled,
@@ -244,8 +307,8 @@ fun SettingsScreen(
             item {
                 Surface(
                     shape = RoundedCornerShape(14.dp),
-                    color = ObsidianSurface,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder),
+                    color = MaterialTheme.colorScheme.surface,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -268,11 +331,11 @@ fun SettingsScreen(
                             Text(
                                 text = "Reescanear Almacenamiento",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                                color = TextPrimary
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = "Actualiza canciones añadidas recientemente al teléfono",
-                                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                                style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                                 fontSize = 11.sp
                             )
                         }
@@ -286,58 +349,6 @@ fun SettingsScreen(
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Text(if (isScanning) "Escaneando..." else "Escanear", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
-
-            // Android Auto & Background Playback Card
-            item {
-                Text(
-                    text = "INTEGRACIÓN EN VEHÍCULOS",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        color = NeonCyan,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    ),
-                    modifier = Modifier.padding(start = 4.dp, top = 8.dp)
-                )
-            }
-
-            item {
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = ObsidianSurface,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Color(0xFF4CAF50).copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Default.DirectionsCar, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(24.dp))
-                        }
-
-                        Spacer(modifier = Modifier.width(14.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Android Auto & MediaSession",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                                color = TextPrimary
-                            )
-                            Text(
-                                text = "Listo para reproducir en pantalla del auto, controles al volante y Bluetooth.",
-                                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
-                                fontSize = 11.sp
-                            )
                         }
                     }
                 }
@@ -359,8 +370,8 @@ fun SettingsScreen(
             item {
                 Surface(
                     shape = RoundedCornerShape(14.dp),
-                    color = ObsidianSurface,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder),
+                    color = MaterialTheme.colorScheme.surface,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -383,11 +394,11 @@ fun SettingsScreen(
                             Text(
                                 text = "Autor",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                                color = TextPrimary
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = "Fredy Alarcón Ordoñez",
-                                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                                style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                                 fontSize = 13.sp
                             )
                         }
@@ -421,6 +432,45 @@ fun SettingsScreen(
 }
 
 @Composable
+fun ThemeModeOption(
+    title: String,
+    icon: ImageVector,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(12.dp),
+        color = if (isSelected) NeonCyan.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (isSelected) NeonCyan else Color.Transparent
+        ),
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (isSelected) NeonCyan else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium,
+                color = if (isSelected) NeonCyan else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
 fun SettingsOptionItem(
     icon: ImageVector,
     title: String,
@@ -430,8 +480,8 @@ fun SettingsOptionItem(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(14.dp),
-        color = ObsidianSurface,
-        border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder),
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -442,7 +492,7 @@ fun SettingsOptionItem(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(ObsidianCard),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(icon, null, tint = NeonCyan, modifier = Modifier.size(22.dp))
@@ -454,16 +504,16 @@ fun SettingsOptionItem(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = TextPrimary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = subtitle,
-                    style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                    style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                     fontSize = 12.sp
                 )
             }
 
-            Icon(Icons.Default.ChevronRight, null, tint = TextTertiary)
+            Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
         }
     }
 }
