@@ -82,8 +82,12 @@ fun SettingsScreen(
     customAccentColor: Long,
     filterVoiceNotes: Boolean,
     filterDuplicates: Boolean,
+    isAmbientAuraEnabled: Boolean,
+    ambientAuraStyle: com.example.core.model.AmbientAuraStyle,
+    ambientAuraIntensity: Float,
+    ambientAuraWeight: Float,
     onRescan: () -> Unit,
-    onSelectEqualizer: (EqualizerPreset) -> Unit,
+    onSelectEqualizer: (com.example.core.model.EqualizerPreset) -> Unit,
     onSetBandLevel: (Int, Int) -> Unit,
     onSetBassBoost: (Int) -> Unit,
     onSetVirtualizer: (Int) -> Unit,
@@ -91,7 +95,11 @@ fun SettingsScreen(
     onToggleSkipSilence: (Boolean) -> Unit,
     onToggleFilterVoiceNotes: (Boolean) -> Unit,
     onToggleFilterDuplicates: (Boolean) -> Unit,
-    onSetVisualizerStyle: (VisualizerStyle) -> Unit,
+    onToggleAmbientAura: (Boolean) -> Unit,
+    onSetAmbientAuraStyle: (com.example.core.model.AmbientAuraStyle) -> Unit,
+    onSetAmbientAuraIntensity: (Float) -> Unit,
+    onSetAmbientAuraWeight: (Float) -> Unit,
+    onSetVisualizerStyle: (com.example.core.model.VisualizerStyle) -> Unit,
     onSetCustomAccentColor: (Long) -> Unit,
     onSetThemeMode: (String) -> Unit,
     onNavigateToServices: () -> Unit,
@@ -407,6 +415,93 @@ fun SettingsScreen(
                                     checkedTrackColor = NeonCyan
                                 )
                             )
+                        }
+                    }
+                }
+            }
+
+            item {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Iluminación Ambiental", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                                Text("Efecto Aura reactivo a los bajos", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Switch(
+                                checked = isAmbientAuraEnabled,
+                                onCheckedChange = onToggleAmbientAura,
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.Black,
+                                    checkedTrackColor = NeonCyan
+                                )
+                            )
+                        }
+
+                        androidx.compose.animation.AnimatedVisibility(visible = isAmbientAuraEnabled) {
+                            Column {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                // Style Selection
+                                Text("Estilo del Aura", style = MaterialTheme.typography.labelMedium, color = TextTertiary)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    items(com.example.core.model.AmbientAuraStyle.entries.size) { index ->
+                                        val style = com.example.core.model.AmbientAuraStyle.entries[index]
+                                        val isSelected = ambientAuraStyle == style
+                                        Surface(
+                                            onClick = { onSetAmbientAuraStyle(style) },
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = if (isSelected) NeonCyan.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) NeonCyan else Color.Transparent)
+                                        ) {
+                                            Text(
+                                                text = style.displayName,
+                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = if (isSelected) NeonCyan else MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                // Intensity Slider
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("Intensidad", style = MaterialTheme.typography.labelMedium, color = TextTertiary, modifier = Modifier.width(80.dp))
+                                    androidx.compose.material3.Slider(
+                                        value = ambientAuraIntensity,
+                                        onValueChange = onSetAmbientAuraIntensity,
+                                        valueRange = 0.1f..0.8f,
+                                        modifier = Modifier.weight(1f),
+                                        colors = androidx.compose.material3.SliderDefaults.colors(thumbColor = NeonCyan, activeTrackColor = NeonCyan)
+                                    )
+                                }
+
+                                // Weight Slider
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("Grosor", style = MaterialTheme.typography.labelMedium, color = TextTertiary, modifier = Modifier.width(80.dp))
+                                    androidx.compose.material3.Slider(
+                                        value = ambientAuraWeight,
+                                        onValueChange = onSetAmbientAuraWeight,
+                                        valueRange = 0.2f..1.2f,
+                                        modifier = Modifier.weight(1f),
+                                        colors = androidx.compose.material3.SliderDefaults.colors(thumbColor = NeonCyan, activeTrackColor = NeonCyan)
+                                    )
+                                }
+                            }
                         }
                     }
                 }

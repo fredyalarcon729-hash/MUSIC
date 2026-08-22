@@ -58,6 +58,8 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
     private var sleepTimerJob: Job? = null
     private var lyricsFetchJob: Job? = null
     
+    private val configManager = com.example.core.source.ConfigManager(applicationContext)
+
     private var equalizer: Equalizer? = null
     private var bassBoost: BassBoost? = null
     private var virtualizer: Virtualizer? = null
@@ -97,7 +99,15 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
             }
     }
 
-    private val _uiState = MutableStateFlow(PlayerUiState())
+    private val _uiState = MutableStateFlow(
+        PlayerUiState(
+            visualizerStyle = configManager.getVisualizerStyle(),
+            isAmbientAuraEnabled = configManager.isAmbientAuraEnabled(),
+            ambientAuraStyle = configManager.getAmbientAuraStyle(),
+            ambientAuraIntensity = configManager.getAmbientAuraIntensity(),
+            ambientAuraWeight = configManager.getAmbientAuraWeight()
+        )
+    )
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
 
     private val _playbackPositionMs = MutableStateFlow(0L)
@@ -110,6 +120,50 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
 
     fun setOnSongCompletedCallback(callback: (Song) -> Unit) {
         this.onSongCompletedCallback = callback
+    }
+
+    /**
+     * Restores the last known playback state from persistent storage.
+     */
+    fun restorePlaybackState() {
+        scope.launch {
+            val lastSong = configManager.getLastSong() ?: return@launch
+            val lastQueue = configManager.getLastQueue().ifEmpty { listOf(lastSong) }
+            val lastIndex = configManager.getLastQueueIndex().coerceIn(0, lastQueue.size - 1)
+            val lastPosition = configManager.getLastPosition()
+
+            _uiState.update {
+                it.copy(
+                    queue = lastQueue,
+                    currentSong = lastSong,
+                    currentQueueIndex = lastIndex,
+                    durationMs = lastSong.durationMs,
+                    currentPositionMs = lastPosition,
+                    isBuffering = false,
+                    isPlaying = false
+                )
+            }
+            _playbackPositionMs.value = lastPosition
+
+            val mediaItems = lastQueue.map { track ->
+                val metadata = MediaMetadata.Builder()
+                    .setTitle(track.title)
+                    .setArtist(track.artist)
+                    .setAlbumTitle(track.album)
+                    .setArtworkUri(track.artworkUri?.toUri())
+                    .build()
+
+                MediaItem.Builder()
+                    .setMediaId(track.id)
+                    .setUri(track.mediaUri)
+                    .setMediaMetadata(metadata)
+                    .build()
+            }
+
+            exoPlayer.setMediaItems(mediaItems, lastIndex, lastPosition)
+            exoPlayer.prepare()
+            Log.d(TAG, "restorePlaybackState: Restored ${lastSong.title} at $lastPosition ms")
+        }
     }
 
     private val playerListener = object : Player.Listener {
@@ -161,8 +215,19 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
                     )
                 }
                 fetchLyricsForSong(song)
+                saveCurrentState()
             }
         }
+    }
+
+    private fun saveCurrentState() {
+        val state = _uiState.value
+        configManager.saveLastPlaybackState(
+            state.currentSong,
+            state.queue,
+            state.currentQueueIndex,
+            exoPlayer.currentPosition
+        )
     }
 
     private fun fetchLyricsForSong(song: Song) {
@@ -222,6 +287,22 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
         _uiState.update { it.copy(visualizerStyle = style) }
     }
 
+    fun setAmbientAuraEnabled(enabled: Boolean) {
+        _uiState.update { it.copy(isAmbientAuraEnabled = enabled) }
+    }
+
+    fun setAmbientAuraStyle(style: com.example.core.model.AmbientAuraStyle) {
+        _uiState.update { it.copy(ambientAuraStyle = style) }
+    }
+
+    fun setAmbientAuraIntensity(intensity: Float) {
+        _uiState.update { it.copy(ambientAuraIntensity = intensity) }
+    }
+
+    fun setAmbientAuraWeight(weight: Float) {
+        _uiState.update { it.copy(ambientAuraWeight = weight) }
+    }
+
     fun setVolume(volume: Float) {
         val clamped = volume.coerceIn(0f, 1f)
         exoPlayer.volume = clamped
@@ -274,15 +355,26 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
     }
 
     private fun startService() {
-        Log.d(TAG, "startService: Sending intent to FusionMediaService")
-        val intent = Intent(applicationContext, FusionMediaService::class.java)
-        applicationContext.startService(intent)
+        Log.d(TAG, "startService: Despertando FusionMediaService")
+        val intent = Intent(applicationContext, FusionMediaService::class.java).apply {
+            action = "androidx.media3.session.MediaLibraryService"
+        }
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                applicationContext.startForegroundService(intent)
+            } else {
+                applicationContext.startService(intent)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al iniciar el servicio de medios", e)
+        }
     }
 
     fun togglePlayPause() {
         if (exoPlayer.isPlaying) {
             exoPlayer.pause()
         } else {
+            startService() // Ensure service is awake when resuming
             if (exoPlayer.playbackState == Player.STATE_IDLE && _uiState.value.currentSong != null) {
                 val song = _uiState.value.currentSong!!
                 playSong(song, _uiState.value.queue.ifEmpty { listOf(song) })
@@ -340,6 +432,7 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
         val mediaItem = MediaItem.Builder().setMediaId(song.id).setUri(song.mediaUri).setMediaMetadata(metadata).build()
         exoPlayer.addMediaItem(mediaItem)
         _uiState.update { it.copy(queue = currentQueue) }
+        saveCurrentState()
     }
 
     fun playNext(song: Song) {
@@ -350,6 +443,7 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
         val mediaItem = MediaItem.Builder().setMediaId(song.id).setUri(song.mediaUri).setMediaMetadata(metadata).build()
         exoPlayer.addMediaItem(nextIndex, mediaItem)
         _uiState.update { it.copy(queue = currentQueue) }
+        saveCurrentState()
     }
 
     fun removeFromQueue(index: Int) {
@@ -363,6 +457,7 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
                 _uiState.value.currentQueueIndex
             }
             _uiState.update { it.copy(queue = currentQueue, currentQueueIndex = newCurrentIndex) }
+            saveCurrentState()
         }
     }
 
@@ -371,6 +466,7 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
         _uiState.update {
             it.copy(queue = emptyList(), currentSong = null, currentQueueIndex = -1, isPlaying = false)
         }
+        saveCurrentState()
     }
 
     fun setSleepTimer(minutes: Int?) {
@@ -388,11 +484,14 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
                 _uiState.update { it.copy(sleepTimerMinutesLeft = remaining) }
             }
             if (isActive) {
-                _uiState.update { it.copy(isShuttingDown = true, sleepTimerMinutesLeft = null) }
-                exoPlayer.pause()
-                // The activity will observe isShuttingDown and trigger the animation/close
+                initiateManualShutdown()
             }
         }
+    }
+
+    fun initiateManualShutdown() {
+        exoPlayer.pause()
+        _uiState.update { it.copy(isShuttingDown = true, sleepTimerMinutesLeft = null) }
     }
 
     fun setEqualizerPreset(preset: EqualizerPreset) {
@@ -512,6 +611,7 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
     private fun startProgressTicker() {
         progressTickerJob?.cancel()
         progressTickerJob = scope.launch {
+            var saveCounter = 0
             while (isActive) {
                 if (exoPlayer.isPlaying) {
                     val pos = exoPlayer.currentPosition.coerceAtLeast(0L)
@@ -529,6 +629,13 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
                                 bufferedPositionMs = buf
                             )
                         }
+                    }
+
+                    // Save state every ~5 seconds (50 * 100ms)
+                    saveCounter++
+                    if (saveCounter >= 50) {
+                        saveCurrentState()
+                        saveCounter = 0
                     }
                 }
                 delay(100L)

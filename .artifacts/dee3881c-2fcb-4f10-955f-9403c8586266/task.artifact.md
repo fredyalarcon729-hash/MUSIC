@@ -1,11 +1,7 @@
-- [ ] Optimización de Rendimiento (v13.0)
-    - [ ] Aislamiento de Estado de Posición (Optimización 1)
-        - [ ] Crear flujo `playbackPosition` independiente en `FusionMainViewModel.kt`
-        - [ ] Actualizar `MiniPlayer.kt` y `FullPlayerSheet.kt` para usar lambdas en el progreso
-    - [ ] Navegación Instantánea y Memoización (Optimización 3)
-        - [ ] Aplicar `remember` y `key` en listas de `HomeScreen.kt`
-        - [ ] Aplicar `remember` y `key` en listas de `LibraryScreen.kt`
-        - [ ] Optimizar `SongListItem.kt` para evitar redibujados innecesarios
-- [ ] Verificación
-    - [ ] Confirmar scroll fluido en listas largas
-    - [ ] Verificar que el cambio de pestaña no tiene lag perceptible
+- [x] Hacer funcional y estético el Botón de Encendido Neon
+    - [x] Implementar `initiateManualShutdown()` en `FusionPlayerManager.kt`
+    - [x] Implementar `shutdownApp()` en `FusionMainViewModel.kt`
+    - [x] Refactorizar y embellecer `NeonPowerButton` en `MainActivity.kt`
+    - [x] Conectar el botón con la lógica de apagado
+- [x] Verificar la secuencia completa de apagado
+- [x] Actualizar walkthrough

@@ -1,39 +1,37 @@
-# Optimización de Rendimiento y Fluidez UI (v13.0)
+# Funcionalidad y Estética: Botón de Encendido Neon
 
-Este plan reduce el lag y los tirones al navegar por la aplicación mediante la optimización de las recomposiciones y el manejo inteligente de las listas de música.
+Este plan hace funcional el botón de encendido (NeonPowerButton) y mejora su integración estética en la interfaz principal.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> **Aislamiento de Estado**: Hemos detectado que el "reloj" de la app (la posición de la canción) actualiza toda la interfaz cada 100ms. Vamos a "aislar" este movimiento para que las listas de canciones no se enteren de cada milisegundo que pasa, eliminando el lag.
-> **Animaciones Ligeras**: El ecualizador animado de las listas se optimizará para que use el motor de gráficos directamente, sin forzar a toda la fila a redibujarse constantemente.
-> **Estabilidad de Listas**: Aseguraremos que al cambiar de pestaña, Android no intente recalcular todas tus canciones de nuevo, haciendo que la navegación sea instantánea.
+> **Acción de Apagado**: Al tocar el botón, se iniciará la secuencia de cierre: la música se detendrá, se mostrará la pantalla de "Cerrando Sesión" y la aplicación se cerrará tras 3 segundos.
+> **Nueva Ubicación**: Desplazaremos el botón para que esté mejor alineado con el borde superior, dándole un aire de "panel de control" más integrado.
 
 ## Proposed Changes
 
-### [Component Name] UI Optimization - Components
+### [UI Layer] Interactividad y Diseño
 
-#### [MODIFY] [SongListItem.kt](file:///C:/Users/falarcon/StudioProjects/MUSIC/app/src/main/java/com/example/ui/components/SongListItem.kt)
-- **Lazy State**: Cambiar los parámetros para que solo reciba lo estrictamente necesario.
-- **Equalizer Performance**: Optimizar `EqualizerBars` usando `Modifier.graphicsLayer` para evitar recomposiciones del árbol de UI durante la animación.
-
-#### [MODIFY] [MiniPlayer.kt](file:///C:/Users/falarcon/StudioProjects/MUSIC/app/src/main/java/com/example/ui/components/MiniPlayer.kt)
-- **Progreso Eficiente**: Hacer que la barra de progreso del mini-reproductor lea el tiempo mediante una función lambda, evitando que todo el reproductor se redibuje 10 veces por segundo.
-
-### [Component Name] Screens Refinement
-
-#### [MODIFY] [HomeScreen.kt](file:///C:/Users/falarcon/StudioProjects/MUSIC/app/src/main/java/com/example/ui/screens/HomeScreen.kt), [LibraryScreen.kt](file:///C:/Users/falarcon/StudioProjects/MUSIC/app/src/main/java/com/example/ui/screens/LibraryScreen.kt)
-- **Memoización de Lambdas**: Usar `remember` para todas las acciones de clic (`onPlay`, `onFavorite`), evitando que los elementos de la lista se crean nuevos innecesariamente.
-- **Keys Estables**: Reforzar el uso de `key` en todos los `items()` para que Compose reutilice los componentes visibles.
-
-### [Component Name] Architecture
+#### [MODIFY] [MainActivity.kt](file:///C:/Users/falarcon/StudioProjects/MUSIC/app/src/main/java/com/example/MainActivity.kt)
+- **Refactorizar `NeonPowerButton`**: Añadir parámetro `onClick: () -> Unit`.
+- **Ajuste Estético**:
+    - Reducir ligeramente el tamaño para que sea más elegante.
+    - Mejorar el sombreado neon para que no parezca una "mancha" sino un aura definida.
+    - Cambiar la ubicación de `TopEnd` a una posición con márgenes más consistentes (ej. dentro de un `Box` con `statusBarsPadding` y un desplazamiento suave).
+- **Lógica de Click**: Conectar el botón con `mainViewModel.shutdownApp()`.
 
 #### [MODIFY] [FusionMainViewModel.kt](file:///C:/Users/falarcon/StudioProjects/MUSIC/app/src/main/java/com/example/ui/FusionMainViewModel.kt)
-- **Particionamiento de StateFlow**: Crear flujos de estado específicos para los datos que cambian rápido (posición) y los que cambian lento (lista de canciones).
+- Añadir `fun shutdownApp()` que invoque la lógica de apagado en el `PlayerManager`.
+
+### [Core Layer] Lógica de Apagado
+
+#### [MODIFY] [FusionPlayerManager.kt](file:///C:/Users/falarcon/StudioProjects/MUSIC/app/src/main/java/com/example/player/FusionPlayerManager.kt)
+- Añadir `fun initiateManualShutdown()` para pausar la reproducción y activar el flag `isShuttingDown`.
 
 ## Verification Plan
 
 ### Manual Verification
-1.  **Scroll Infinito**: Deslizar rápidamente por una lista de 500 canciones y verificar que no hay saltos ni "congelamientos".
-2.  **Cambio de Pestaña**: Navegar entre Inicio y Biblioteca repetidamente; la transición debe ser instantánea.
-3.  **Monitor de GPU**: (Opcional) Observar que las barras de renderizado se mantienen por debajo de la línea de 16ms.
+1.  **Toque en el Botón**: Confirmar que al pulsar el icono de encendido, la música se pausa inmediatamente.
+2.  **Secuencia Visual**: Verificar que aparece el overlay de "CERRANDO SESIÓN" con la animación de carga.
+3.  **Cierre**: Comprobar que la actividad finaliza automáticamente después de la cuenta regresiva.
+4.  **Estética**: Asegurar que el botón se ve "limpio" y bien posicionado en modo vertical y horizontal.

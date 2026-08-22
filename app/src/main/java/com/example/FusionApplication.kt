@@ -79,6 +79,7 @@ class FusionApplication : Application() {
         )
         authManager = AuthManager(this)
         playerManager = FusionPlayerManager.getInstance(this)
+        playerManager.restorePlaybackState()
 
         playerManager.setOnSongCompletedCallback { song ->
             CoroutineScope(Dispatchers.IO).launch {
@@ -92,10 +93,11 @@ class FusionApplication : Application() {
             val channel = NotificationChannel(
                 "fusion_playback_channel",
                 "Reproducción Fusion Music",
-                NotificationManager.IMPORTANCE_DEFAULT
+                NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Notificación de control de reproducción de música"
                 setShowBadge(false)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
             }
             val manager = getSystemService(NotificationManager::class.java)
             manager?.createNotificationChannel(channel)

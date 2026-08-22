@@ -51,8 +51,8 @@ import androidx.compose.ui.unit.sp
 import com.example.core.model.DownloadStatus
 import com.example.core.model.PlayerUiState
 import com.example.core.model.Song
-import com.example.ui.SearchFilter
-import com.example.ui.SearchUiResult
+import com.example.ui.viewmodels.SearchFilter
+import com.example.ui.viewmodels.SearchUiResult
 import com.example.ui.components.FusionArtwork
 import com.example.ui.components.SongListItem
 import com.example.ui.theme.*

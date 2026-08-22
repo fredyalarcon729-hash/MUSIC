@@ -10,97 +10,84 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.animation.core.RepeatMode as AnimRepeatMode
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.border
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import kotlinx.coroutines.delay
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.example.core.model.Song
 import com.example.ui.FusionMainViewModel
 import com.example.ui.components.FusionBottomNav
 import com.example.ui.components.FusionNavDestination
 import com.example.ui.components.MiniPlayer
+import com.example.ui.navigation.FusionNavHost
 import com.example.ui.player.AddToPlaylistDialog
 import com.example.ui.player.CreatePlaylistDialog
 import com.example.ui.player.FullPlayerSheet
 import com.example.ui.player.QueueSheet
-import com.example.ui.screens.HomeScreen
-import com.example.ui.screens.LibraryScreen
-import com.example.ui.screens.PlaylistsScreen
-import com.example.ui.screens.SearchScreen
-import com.example.ui.screens.ServicesScreen
-import com.example.ui.screens.SettingsScreen
-import com.example.ui.screens.StatsScreen
 import com.example.ui.theme.FusionMusicTheme
-import com.example.ui.theme.ObsidianDark
+import com.example.ui.viewmodels.SearchViewModel
+import com.example.ui.viewmodels.SettingsViewModel
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: FusionMainViewModel by viewModels()
+    private val mainViewModel: FusionMainViewModel by viewModels()
+    private val searchViewModel: SearchViewModel by viewModels()
+    private val settingsViewModel: SettingsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
         setContent {
-            val themeMode by viewModel.themeMode.collectAsState()
+            val themeMode by settingsViewModel.themeMode.collectAsState()
             val isDarkTheme = when (themeMode) {
                 "light" -> false
                 "dark" -> true
                 "system" -> androidx.compose.foundation.isSystemInDarkTheme()
-                else -> true // Default to Dark
+                else -> true
             }
 
             FusionMusicTheme(darkTheme = isDarkTheme) {
-                MainAppContent(viewModel = viewModel)
+                MainAppContent(
+                    mainViewModel = mainViewModel,
+                    searchViewModel = searchViewModel,
+                    settingsViewModel = settingsViewModel
+                )
             }
         }
     }
 }
 
 @Composable
-fun MainAppContent(viewModel: FusionMainViewModel) {
+fun MainAppContent(
+    mainViewModel: FusionMainViewModel,
+    searchViewModel: SearchViewModel,
+    settingsViewModel: SettingsViewModel
+) {
     val context = LocalContext.current
+    val navController = rememberNavController()
 
     // Request permissions dynamically
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -108,7 +95,7 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
     ) { permissions ->
         val granted = permissions.values.any { it }
         if (granted) {
-            viewModel.rescanLocalLibrary()
+            mainViewModel.rescanLocalLibrary()
         }
     }
 
@@ -140,97 +127,60 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
     }
 
     // State Collection
-    val themeMode by viewModel.themeMode.collectAsState()
-    val visualizerStyle by viewModel.visualizerStyle.collectAsState()
-    val customAccentColor by viewModel.customAccentColor.collectAsState()
-    val filterVoiceNotes by viewModel.filterVoiceNotes.collectAsState()
-    val filterDuplicates by viewModel.filterDuplicates.collectAsState()
-    val isDarkTheme = when (themeMode) {
-        "light" -> false
-        "dark" -> true
-        else -> androidx.compose.foundation.isSystemInDarkTheme()
-    }
-
-    val songs by viewModel.songs.collectAsState()
-    val downloadedSongs by viewModel.downloadedSongs.collectAsState()
-    val totalStorageBytes by viewModel.totalDownloadedStorageBytes.collectAsState()
-    val downloadStates by viewModel.downloadStates.collectAsState()
-
-    val albums by viewModel.albums.collectAsState()
-    val artists by viewModel.artists.collectAsState()
-    val favoriteSongs by viewModel.favoriteSongs.collectAsState()
-    val playlists by viewModel.playlists.collectAsState()
-    val playerState by viewModel.playerUiState.collectAsState()
-    val isScanning by viewModel.isScanning.collectAsState()
-    val servicesState by viewModel.servicesState.collectAsState()
-    val youtubeApiKey by viewModel.youtubeApiKey.collectAsState()
-    val googleClientId by viewModel.googleClientId.collectAsState()
-    val accentColor by viewModel.accentColor.collectAsState()
-    val playbackPosition by viewModel.playbackPositionMs.collectAsState()
+    val playerState by mainViewModel.playerUiState.collectAsState()
+    val playlists by mainViewModel.playlists.collectAsState()
+    val accentColor by mainViewModel.accentColor.collectAsState()
+    val playbackPosition by mainViewModel.playbackPositionMs.collectAsState()
 
     // Handle Shutdown Event
     LaunchedEffect(playerState.isShuttingDown) {
         if (playerState.isShuttingDown) {
-            delay(3000) // Give time for the creative animation
+            delay(3000)
             (context as? android.app.Activity)?.finish()
         }
     }
 
-    val searchQuery by viewModel.searchQuery.collectAsState()
-    val searchFilter by viewModel.searchFilter.collectAsState()
-    val searchResults by viewModel.searchResults.collectAsState()
-    val searchHistory by viewModel.searchHistory.collectAsState()
-
-    val totalTimeMs by viewModel.totalListeningTimeMs.collectAsState()
-    val topArtists by viewModel.topArtists.collectAsState()
-    val hourlyActivity by viewModel.hourlyActivity.collectAsState()
-    val userSession by viewModel.userSession.collectAsState()
-
-    // Navigation & Sheet Dialog States
-    var currentDestination by remember { mutableStateOf(FusionNavDestination.HOME) }
-    var isViewingServices by remember { mutableStateOf(value = false) }
-
-    // Listen for UI events from ViewModel
+    // Listen for UI events
     LaunchedEffect(Unit) {
-        viewModel.eventFlow.collect { message ->
+        mainViewModel.eventFlow.collect { message ->
             android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
         }
     }
 
-    var isFullPlayerExpanded by remember { mutableStateOf(value = false) }
-    var isQueueSheetExpanded by remember { mutableStateOf(value = false) }
-
+    // UI state for sheets/dialogs
+    var isFullPlayerExpanded by remember { mutableStateOf(false) }
+    var isQueueSheetExpanded by remember { mutableStateOf(false) }
     var songForPlaylistSelection by remember { mutableStateOf<Song?>(null) }
-    var showCreatePlaylistDialog by remember { mutableStateOf(value = false) }
+    var showCreatePlaylistDialog by remember { mutableStateOf(false) }
 
-    // Optimization: Memoize common callbacks to prevent unnecessary recompositions
-    val onPlaySong: (Song, List<Song>) -> Unit = remember(viewModel) { { song, queue -> viewModel.playSong(song, queue) } }
-    val onToggleFavorite: (Song) -> Unit = remember(viewModel) { { song -> viewModel.toggleFavorite(song) } }
-    val onPlayNext: (Song) -> Unit = remember(viewModel) { { song -> viewModel.playNext(song) } }
-    val onAddToQueue: (Song) -> Unit = remember(viewModel) { { song -> viewModel.addToQueue(song) } }
-    val onPlayAll: (List<Song>, Boolean) -> Unit = remember(viewModel) { { list, shuffle -> viewModel.playAll(list, shuffle) } }
-    val onSkipPrevious: () -> Unit = remember(viewModel) { { viewModel.skipToPrevious() } }
-    val onRescan: () -> Unit = remember(viewModel) { { viewModel.rescanLocalLibrary() } }
+    // Navigation state
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+    val showBottomBar = FusionNavDestination.values().any { it.route == currentRoute }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            if (!isViewingServices) {
+            if (showBottomBar) {
                 Column(modifier = Modifier.navigationBarsPadding()) {
-                    // Mini Player (Only visible if a song is loaded)
                     MiniPlayer(
                         playerState = playerState,
-                        progressProvider = { playerState.progress }, // This will still recompose MiniPlayer on position change because it's accessing playerState.progress
+                        progressProvider = { playerState.progress },
                         onExpandPlayer = { isFullPlayerExpanded = true },
-                        onTogglePlayPause = { viewModel.togglePlayPause() },
-                        onSkipNext = { viewModel.skipToNext() },
-                        onSkipPrevious = onSkipPrevious
+                        onTogglePlayPause = { mainViewModel.togglePlayPause() },
+                        onSkipNext = { mainViewModel.skipToNext() },
+                        onSkipPrevious = { mainViewModel.skipToPrevious() }
                     )
 
-                    // Persistent Material 3 Bottom Nav Bar
                     FusionBottomNav(
-                        currentDestination = currentDestination,
-                        onNavigateTo = { currentDestination = it }
+                        currentDestination = FusionNavDestination.values().find { it.route == currentRoute } ?: FusionNavDestination.HOME,
+                        onNavigateTo = { destination ->
+                            navController.navigate(destination.route) {
+                                popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
                     )
                 }
             }
@@ -242,146 +192,28 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
                 .background(MaterialTheme.colorScheme.background)
                 .padding(innerPadding)
         ) {
-            if (isViewingServices) {
-                ServicesScreen(
-                    services = servicesState,
-                    youtubeApiKey = youtubeApiKey,
-                    googleClientId = googleClientId,
-                    userSession = userSession,
-                    onUpdateYouTubeApiKey = { viewModel.updateYouTubeApiKey(it) },
-                    onUpdateGoogleClientId = { viewModel.updateGoogleClientId(it) },
-                    onToggleService = { source, enabled -> viewModel.toggleExternalService(source, enabled) },
-                    onSignIn = { ctx, clientId -> viewModel.signInWithGoogle(ctx, clientId) },
-                    onSignOut = { viewModel.signOut() },
-                    onGetDiagnosticInfo = { viewModel.getDiagnosticInfo() },
-                    onNavigateBack = { isViewingServices = false }
-                )
-            } else {
-                AnimatedContent(
-                    targetState = currentDestination,
-                    transitionSpec = {
-                        val direction = if (targetState.ordinal > initialState.ordinal) 1 else -1
-                        (slideInHorizontally { width -> direction * width } + fadeIn())
-                            .togetherWith(slideOutHorizontally { width -> -direction * width } + fadeOut())
-                    },
-                    label = "screen_transition"
-                ) { target ->
-                    when (target) {
-                        FusionNavDestination.HOME -> HomeScreen(
-                            songs = songs,
-                            albums = albums,
-                            favoriteSongs = favoriteSongs,
-                            playerState = playerState,
-                            isScanning = isScanning,
-                            onPlaySong = onPlaySong,
-                            onPlayAll = onPlayAll,
-                            onToggleFavorite = onToggleFavorite,
-                            onPlayNext = onPlayNext,
-                            onAddToQueue = onAddToQueue,
-                            onAddToPlaylist = { songForPlaylistSelection = it },
-                            onRescan = onRescan,
-                            onOpenAlbum = { _ ->
-                                currentDestination = FusionNavDestination.LIBRARY
-                            },
-                            onNavigateToServices = { isViewingServices = true }
-                        )
-
-                        FusionNavDestination.LIBRARY -> LibraryScreen(
-                            songs = songs,
-                            downloadedSongs = downloadedSongs,
-                            totalStorageBytes = totalStorageBytes,
-                            albums = albums,
-                            artists = artists,
-                            playerState = playerState,
-                            downloadStates = downloadStates,
-                            onPlaySong = onPlaySong,
-                            onPlayAll = onPlayAll,
-                            onToggleFavorite = onToggleFavorite,
-                            onPlayNext = onPlayNext,
-                            onAddToQueue = onAddToQueue,
-                            onAddToPlaylist = { songForPlaylistSelection = it },
-                            onDeleteDownload = { viewModel.deleteDownload(it) },
-                            onNavigateToSearch = { currentDestination = FusionNavDestination.SEARCH }
-                        )
-
-                        FusionNavDestination.SEARCH -> SearchScreen(
-                            query = searchQuery,
-                            selectedFilter = searchFilter,
-                            searchResults = searchResults,
-                            playerState = playerState,
-                            allSongs = songs,
-                            downloadStates = downloadStates,
-                            searchHistory = searchHistory,
-                            onQueryChanged = { viewModel.updateSearchQuery(it) },
-                            onFilterChanged = { viewModel.updateSearchFilter(it) },
-                            onPlaySong = onPlaySong,
-                            onToggleFavorite = onToggleFavorite,
-                            onPlayNext = onPlayNext,
-                            onAddToQueue = onAddToQueue,
-                            onAddToPlaylist = { songForPlaylistSelection = it },
-                            onClearHistory = { viewModel.clearSearchHistory() },
-                            onDownloadSong = { viewModel.startDownload(it) },
-                            onCancelDownload = { viewModel.cancelDownload(it) },
-                            onDeleteDownload = { viewModel.deleteDownload(it) }
-                        )
-
-                        FusionNavDestination.STATS -> StatsScreen(
-                            totalTimeMs = totalTimeMs,
-                            topArtists = topArtists,
-                            hourlyActivity = hourlyActivity
-                        )
-
-                        FusionNavDestination.PLAYLISTS -> PlaylistsScreen(
-                            playlists = playlists,
-                            favoriteSongs = favoriteSongs,
-                            playerState = playerState,
-                            onOpenCreateDialog = { showCreatePlaylistDialog = true },
-                            onDeletePlaylist = { viewModel.deletePlaylist(it) },
-                            onPlaySong = onPlaySong,
-                            onPlayAll = onPlayAll,
-                            onToggleFavorite = onToggleFavorite,
-                            onPlayNext = onPlayNext,
-                            onAddToQueue = onAddToQueue,
-                            onAddToPlaylist = { songForPlaylistSelection = it },
-                            onRemoveFromPlaylist = { pId, sId -> viewModel.removeSongFromPlaylist(pId, sId) },
-                            getSongsForPlaylist = { viewModel.getSongsForPlaylist(it) }
-                        )
-
-                        FusionNavDestination.SETTINGS -> SettingsScreen(
-                            playerState = playerState,
-                            isScanning = isScanning,
-                            themeMode = themeMode,
-                            visualizerStyle = visualizerStyle,
-                            customAccentColor = customAccentColor,
-                            filterVoiceNotes = filterVoiceNotes,
-                            filterDuplicates = filterDuplicates,
-                            onRescan = onRescan,
-                            onSelectEqualizer = { viewModel.setEqualizerPreset(it) },
-                            onSetBandLevel = { band, level -> viewModel.setBandLevel(band, level) },
-                            onSetBassBoost = { strength -> viewModel.setBassBoost(strength) },
-                            onSetVirtualizer = { strength -> viewModel.setVirtualizer(strength) },
-                            onSelectSleepTimer = { viewModel.setSleepTimer(it) },
-                            onToggleSkipSilence = { viewModel.setSkipSilenceEnabled(it) },
-                            onToggleFilterVoiceNotes = { viewModel.setFilterVoiceNotesEnabled(it) },
-                            onToggleFilterDuplicates = { viewModel.setFilterDuplicatesEnabled(it) },
-                            onSetVisualizerStyle = { viewModel.updateVisualizerStyle(it) },
-                            onSetCustomAccentColor = { viewModel.updateCustomAccentColor(it) },
-                            onSetThemeMode = { viewModel.updateThemeMode(it) },
-                            onNavigateToServices = { isViewingServices = true }
-                        )
-                    }
-                }
-            }
+            FusionNavHost(
+                navController = navController,
+                mainViewModel = mainViewModel,
+                searchViewModel = searchViewModel,
+                settingsViewModel = settingsViewModel,
+                onSongForPlaylist = { songForPlaylistSelection = it },
+                onOpenCreatePlaylist = { showCreatePlaylistDialog = true }
+            )
 
             // Floating Power Dial
-            if (!isViewingServices) {
+            if (showBottomBar) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(top = 12.dp, end = 16.dp)
+                        .padding(top = 10.dp, end = 16.dp)
                         .statusBarsPadding()
                 ) {
-                    NeonPowerButton(isOn = !playerState.isShuttingDown, accentColor = accentColor)
+                    NeonPowerButton(
+                        isOn = !playerState.isShuttingDown,
+                        accentColor = accentColor,
+                        onClick = { mainViewModel.shutdownApp() }
+                    )
                 }
             }
         }
@@ -398,26 +230,26 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
             accentColor = accentColor,
             positionMsProvider = { playbackPosition },
             onDismiss = { isFullPlayerExpanded = false },
-            onTogglePlayPause = { viewModel.togglePlayPause() },
-            onSeekTo = { viewModel.seekTo(it) },
-            onSkipNext = { viewModel.skipToNext() },
-            onSkipPrevious = { viewModel.skipToPrevious() },
-            onToggleShuffle = { viewModel.toggleShuffle() },
-            onCycleRepeat = { viewModel.cycleRepeatMode() },
-            onToggleFavorite = { playerState.currentSong?.let { viewModel.toggleFavorite(it) } },
+            onTogglePlayPause = { mainViewModel.togglePlayPause() },
+            onSeekTo = { mainViewModel.seekTo(it) },
+            onSkipNext = { mainViewModel.skipToNext() },
+            onSkipPrevious = { mainViewModel.skipToPrevious() },
+            onToggleShuffle = { mainViewModel.toggleShuffle() },
+            onCycleRepeat = { mainViewModel.cycleRepeatMode() },
+            onToggleFavorite = { playerState.currentSong?.let { mainViewModel.toggleFavorite(it) } },
             onOpenQueue = { isQueueSheetExpanded = true },
-            onSelectSleepTimer = { viewModel.setSleepTimer(it) },
-            onSelectEqualizer = { viewModel.setEqualizerPreset(it) },
-            onSetBandLevel = { band, level -> viewModel.setBandLevel(band, level) },
-            onSetBassBoost = { strength -> viewModel.setBassBoost(strength) },
-            onSetVirtualizer = { strength -> viewModel.setVirtualizer(strength) },
-            onToggleKaraokeMode = { viewModel.setKaraokeModeActive(it) },
-            onSetPitch = { viewModel.setPitchSemitones(it) },
-            onToggleVocalReduction = { viewModel.setVocalReductionEnabled(it) },
-            onSetVocalStrength = { viewModel.setVocalReductionStrength(it) },
-            onSetPlaybackSpeed = { viewModel.setPlaybackSpeed(it) },
-            onToggleNormalization = { viewModel.toggleNormalization() },
-            onSetVolume = { viewModel.setVolume(it) }
+            onSelectSleepTimer = { mainViewModel.setSleepTimer(it) },
+            onSelectEqualizer = { mainViewModel.setEqualizerPreset(it) },
+            onSetBandLevel = { band, level -> mainViewModel.setBandLevel(band, level) },
+            onSetBassBoost = { strength -> mainViewModel.setBassBoost(strength) },
+            onSetVirtualizer = { strength -> mainViewModel.setVirtualizer(strength) },
+            onToggleKaraokeMode = { mainViewModel.setKaraokeModeActive(it) },
+            onSetPitch = { mainViewModel.setPitchSemitones(it) },
+            onToggleVocalReduction = { mainViewModel.setVocalReductionEnabled(it) },
+            onSetVocalStrength = { mainViewModel.setVocalReductionStrength(it) },
+            onSetPlaybackSpeed = { mainViewModel.setPlaybackSpeed(it) },
+            onToggleNormalization = { mainViewModel.toggleNormalization() },
+            onSetVolume = { mainViewModel.setVolume(it) }
         )
     }
 
@@ -426,9 +258,9 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
         QueueSheet(
             playerState = playerState,
             onDismiss = { isQueueSheetExpanded = false },
-            onPlaySongAt = { song, idx -> viewModel.playSong(song, playerState.queue, idx) },
-            onRemoveFromQueue = { viewModel.removeFromQueue(it) },
-            onClearQueue = { viewModel.clearQueue() }
+            onPlaySongAt = { song, idx -> mainViewModel.playSong(song, playerState.queue, idx) },
+            onRemoveFromQueue = { mainViewModel.removeFromQueue(it) },
+            onClearQueue = { mainViewModel.clearQueue() }
         )
     }
 
@@ -439,12 +271,10 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
             playlists = playlists,
             onDismiss = { songForPlaylistSelection = null },
             onSelectPlaylist = { playlist ->
-                viewModel.addSongToPlaylist(playlist.id, song.id)
+                mainViewModel.addSongToPlaylist(playlist.id, song.id)
                 songForPlaylistSelection = null
             },
-            onOpenCreateDialog = {
-                showCreatePlaylistDialog = true
-            }
+            onOpenCreateDialog = { showCreatePlaylistDialog = true }
         )
     }
 
@@ -453,7 +283,7 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
         CreatePlaylistDialog(
             onDismiss = { showCreatePlaylistDialog = false },
             onCreate = { name, desc ->
-                viewModel.createPlaylist(name, desc)
+                mainViewModel.createPlaylist(name, desc)
                 showCreatePlaylistDialog = false
             }
         )
@@ -461,13 +291,13 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
 }
 
 @Composable
-fun NeonPowerButton(isOn: Boolean, accentColor: Color) {
+fun NeonPowerButton(isOn: Boolean, accentColor: Color, onClick: () -> Unit) {
     val glowColor = if (isOn) accentColor else Color.DarkGray
     val infiniteTransition = rememberInfiniteTransition(label = "power_glow")
     
     val shadowBlur by infiniteTransition.animateFloat(
-        initialValue = 8f,
-        targetValue = 16f,
+        initialValue = 6f,
+        targetValue = 12f,
         animationSpec = infiniteRepeatable(
             animation = tween(1500, easing = LinearOutSlowInEasing),
             repeatMode = AnimRepeatMode.Reverse
@@ -475,38 +305,36 @@ fun NeonPowerButton(isOn: Boolean, accentColor: Color) {
         label = "shadow_blur"
     )
 
-    Box(
+    Surface(
+        onClick = onClick,
+        enabled = isOn,
+        color = Color.Transparent,
+        shape = CircleShape,
         modifier = Modifier
-            .size(42.dp)
+            .size(38.dp)
             .shadow(
                 elevation = if (isOn) shadowBlur.dp else 0.dp,
                 shape = CircleShape,
                 spotColor = glowColor,
                 ambientColor = glowColor
             )
-            .clip(CircleShape)
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(glowColor.copy(alpha = 0.4f), glowColor.copy(alpha = 0.1f))
-                )
-            )
-            .border(2.dp, glowColor.copy(alpha = 0.8f), CircleShape),
-        contentAlignment = Alignment.Center
+            .border(1.5.dp, glowColor.copy(alpha = 0.6f), CircleShape)
     ) {
-        // Inner circle "Button"
         Box(
             modifier = Modifier
-                .size(24.dp)
-                .clip(CircleShape)
-                .background(if (isOn) Color.White else Color.Black)
-                .border(1.dp, glowColor, CircleShape),
+                .fillMaxSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(glowColor.copy(alpha = 0.25f), Color.Transparent)
+                    )
+                ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Default.PowerSettingsNew,
-                contentDescription = null,
-                tint = if (isOn) accentColor else Color.Gray,
-                modifier = Modifier.size(16.dp)
+                contentDescription = "Apagar aplicación",
+                tint = if (isOn) Color.White else Color.Gray,
+                modifier = Modifier.size(18.dp)
             )
         }
     }
@@ -518,7 +346,7 @@ fun ShutdownOverlay(accentColor: Color) {
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.95f))
-            .clickable(enabled = false) {}, // Intercept clicks
+            .clickable(enabled = false) {},
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -539,9 +367,7 @@ fun ShutdownOverlay(accentColor: Color) {
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                 color = accentColor.copy(alpha = 0.8f)
             )
-            
             Spacer(modifier = Modifier.height(60.dp))
-            
             CircularProgressIndicator(
                 modifier = Modifier.size(40.dp),
                 color = accentColor,

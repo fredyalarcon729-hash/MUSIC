@@ -47,6 +47,7 @@ class MusicRepository(
 
     val favoritesFlow: Flow<List<FavoriteEntity>> = musicDao.getAllFavorites()
     val playlistsFlow: Flow<List<PlaylistEntity>> = musicDao.getAllPlaylists()
+    val playlistsState: StateFlow<List<PlaylistEntity>> = playlistsFlow.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     // Downloaded songs from Room
     val downloadedSongsFlow: Flow<List<Song>> = combine(
@@ -91,6 +92,9 @@ class MusicRepository(
         val nonDuplicateDownloaded = downloadedSongs.filterNot { localIds.contains(it.id) }
         localMapped + nonDuplicateDownloaded
     }.distinctUntilChanged()
+
+    val songsState: StateFlow<List<Song>> = songsWithFavorites
+        .stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     // Statistics Flows
     val totalListeningTimeMs: Flow<Long> = musicDao.getTotalListeningTimeMs().map { it ?: 0L }

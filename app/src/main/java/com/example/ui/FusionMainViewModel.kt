@@ -17,14 +17,11 @@ import com.example.core.model.Artist
 import com.example.core.model.DownloadStatus
 import com.example.core.model.EqualizerPreset
 import com.example.core.model.MusicSource
-import com.example.core.model.VisualizerStyle
 import com.example.core.model.PlayerUiState
 import com.example.core.model.Playlist
 import com.example.core.model.Song
 import com.example.core.source.ExternalServiceDescriptor
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -32,7 +29,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -40,22 +36,6 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.time.Duration.Companion.milliseconds
-
-enum class SearchFilter(val label: String) {
-    ALL("Todo"),
-    SONGS("Canciones"),
-    DEEZER("Deezer"),
-    ARTISTS("Artistas"),
-    ALBUMS("Álbumes")
-}
-
-data class SearchUiResult(
-    val songs: List<Song> = emptyList(),
-    val deezerSongs: List<Song> = emptyList(),
-    val artists: List<Artist> = emptyList(),
-    val albums: List<Album> = emptyList()
-)
 
 class FusionMainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -92,15 +72,6 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
 
     val servicesState: StateFlow<List<ExternalServiceDescriptor>> = servicesManager.servicesState
 
-    private val _youtubeApiKey = MutableStateFlow(configManager.getYouTubeApiKey() ?: "")
-    val youtubeApiKey: StateFlow<String> = _youtubeApiKey.asStateFlow()
-
-    private val _rapidApiKey = MutableStateFlow(configManager.getRapidApiKey() ?: "")
-    val rapidApiKey: StateFlow<String> = _rapidApiKey.asStateFlow()
-
-    private val _googleClientId = MutableStateFlow(configManager.getGoogleClientId() ?: "")
-    val googleClientId: StateFlow<String> = _googleClientId.asStateFlow()
-
     // UI Events (errors, toasts)
     private val _eventFlow = MutableSharedFlow<String>()
     val eventFlow: SharedFlow<String> = _eventFlow.asSharedFlow()
@@ -118,25 +89,6 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
     // Dynamic Theming
     private val _accentColor = MutableStateFlow(Color(0xFF00E5FF)) // Default NeonCyan
     val accentColor: StateFlow<Color> = _accentColor.asStateFlow()
-
-    private val _themeMode = MutableStateFlow(configManager.getThemeMode())
-    val themeMode: StateFlow<String> = _themeMode.asStateFlow()
-
-    private val _customAccentColor = MutableStateFlow(configManager.getCustomAccentColor())
-    val customAccentColor: StateFlow<Long> = _customAccentColor.asStateFlow()
-
-    private val _visualizerStyle = MutableStateFlow(configManager.getVisualizerStyle())
-    val visualizerStyle: StateFlow<VisualizerStyle> = _visualizerStyle.asStateFlow()
-
-    private val _filterVoiceNotes = MutableStateFlow(configManager.isFilterVoiceNotesEnabled())
-    val filterVoiceNotes: StateFlow<Boolean> = _filterVoiceNotes.asStateFlow()
-
-    private val _filterDuplicates = MutableStateFlow(configManager.isFilterDuplicatesEnabled())
-    val filterDuplicates: StateFlow<Boolean> = _filterDuplicates.asStateFlow()
-
-    // Search History
-    private val _searchHistory = MutableStateFlow(configManager.getSearchHistory())
-    val searchHistory: StateFlow<List<String>> = _searchHistory.asStateFlow()
 
     val userSession = authManager.userState
 
@@ -159,10 +111,11 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
             .launchIn(viewModelScope)
     }
 
-    private fun updateThemeForCurrentSong() {
+    fun updateThemeForCurrentSong() {
         // If user has set a fixed custom accent color, use it
-        if (_customAccentColor.value != 0L) {
-            _accentColor.value = Color(_customAccentColor.value)
+        val customColor = configManager.getCustomAccentColor()
+        if (customColor != 0L) {
+            _accentColor.value = Color(customColor)
             return
         }
 
@@ -211,98 +164,6 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Search state
-    private val _searchQuery = MutableStateFlow("")
-    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
-
-    private val _searchFilter = MutableStateFlow(SearchFilter.ALL)
-    val searchFilter: StateFlow<SearchFilter> = _searchFilter.asStateFlow()
-
-    private val _deezerSearchResults = MutableStateFlow<List<Song>>(emptyList())
-
-    private var deezerSearchJob: Job? = null
-
-    val searchResults: StateFlow<SearchUiResult> = combine(
-        combine(_searchQuery, _searchFilter, _deezerSearchResults) { query, filter, dzSongs ->
-            Triple(query, filter, dzSongs)
-        },
-        combine(songs, artists, albums) { allSongs, allArtists, allAlbums ->
-            Triple(allSongs, allArtists, allAlbums)
-        }
-    ) { (query, filter, dzSongs), (allSongs, allArtists, allAlbums) ->
-        val q = query.trim().lowercase()
-        if (q.isEmpty()) {
-            SearchUiResult()
-        } else {
-            val matchedSongs = if ((filter == SearchFilter.ALL) || (filter == SearchFilter.SONGS)) {
-                allSongs.filter {
-                    (it.source == MusicSource.LOCAL) &&
-                    (it.title.lowercase().contains(q) || it.artist.lowercase().contains(q) || it.album.lowercase().contains(q))
-                }
-            } else emptyList()
-
-            val matchedDeezer = if ((filter == SearchFilter.ALL) || (filter == SearchFilter.DEEZER)) {
-                dzSongs
-            } else emptyList()
-
-            val matchedArtists = if ((filter == SearchFilter.ALL) || (filter == SearchFilter.ARTISTS)) {
-                allArtists.filter { it.name.lowercase().contains(q) }
-            } else emptyList()
-
-            val matchedAlbums = if ((filter == SearchFilter.ALL) || (filter == SearchFilter.ALBUMS)) {
-                allAlbums.filter { it.title.lowercase().contains(q) || it.artist.lowercase().contains(q) }
-            } else emptyList()
-
-            SearchUiResult(
-                songs = matchedSongs,
-                deezerSongs = matchedDeezer,
-                artists = matchedArtists,
-                albums = matchedAlbums,
-            )
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SearchUiResult())
-
-    fun updateSearchQuery(query: String) {
-        _searchQuery.value = query
-        triggerDeezerSearch(query)
-        if (query.length >= 3) {
-            addToSearchHistory(query)
-        }
-    }
-
-    private fun addToSearchHistory(query: String) {
-        configManager.addSearchQuery(query)
-        _searchHistory.value = configManager.getSearchHistory()
-    }
-
-    fun clearSearchHistory() {
-        configManager.clearSearchHistory()
-        _searchHistory.value = emptyList()
-    }
-
-    fun updateSearchFilter(filter: SearchFilter) {
-        _searchFilter.value = filter
-    }
-
-    private fun triggerDeezerSearch(query: String) {
-        deezerSearchJob?.cancel()
-        val trimmed = query.trim()
-        if (trimmed.length < 2) {
-            _deezerSearchResults.value = emptyList()
-            return
-        }
-
-        deezerSearchJob = viewModelScope.launch {
-            delay(300.milliseconds)
-            try {
-                val results = repository.searchDeezer(trimmed)
-                _deezerSearchResults.value = results
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
     // Playback Controls
     fun playSong(song: Song, queue: List<Song> = emptyList(), startIndex: Int = -1) {
         val actualQueue = queue.ifEmpty { listOf(song) }
@@ -332,19 +193,12 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
     fun setBandLevel(band: Int, level: Int) = playerManager.setBandLevel(band, level)
     fun setBassBoost(strength: Int) = playerManager.setBassBoost(strength)
     fun setVirtualizer(strength: Int) = playerManager.setVirtualizer(strength)
-
     fun setSkipSilenceEnabled(enabled: Boolean) = playerManager.setSkipSilenceEnabled(enabled)
-
     fun setCrossfadeDuration(seconds: Int) = playerManager.setCrossfadeDuration(seconds)
-
     fun setMezclaProEnabled(enabled: Boolean) = playerManager.setMezclaProEnabled(enabled)
-
     fun setPitchSemitones(semitones: Int) = playerManager.setPitchSemitones(semitones)
-
     fun setVocalReductionEnabled(enabled: Boolean) = playerManager.setVocalReductionEnabled(enabled)
-
     fun setVocalReductionStrength(strength: Float) = playerManager.setVocalReductionStrength(strength)
-
     fun setKaraokeModeActive(active: Boolean) = playerManager.setKaraokeModeActive(active)
 
     fun toggleNormalization() {
@@ -410,40 +264,25 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    fun updateYouTubeApiKey(apiKey: String) {
-        viewModelScope.launch {
-            configManager.saveYouTubeApiKey(apiKey)
-            _youtubeApiKey.value = apiKey
-            repository.youtubeProvider.resolver.updateApiKey(apiKey)
-        }
-    }
-
-    fun updateRapidApiKey(apiKey: String) {
-        viewModelScope.launch {
-            configManager.saveRapidApiKey(apiKey)
-            _rapidApiKey.value = apiKey
-            repository.youtubeProvider.resolver.updateRapidApiKey(apiKey)
-        }
-    }
-
     fun rescanLocalLibrary() {
         viewModelScope.launch {
             repository.rescanLocalMusic()
         }
     }
 
-    fun signInWithGoogle(context: android.content.Context, explicitClientId: String? = null) {
+    fun signInWithGoogle(context: android.content.Context, googleClientId: String?) {
+        if (googleClientId.isNullOrBlank()) {
+            viewModelScope.launch {
+                _eventFlow.emit("Client ID de Google no configurado")
+            }
+            return
+        }
         viewModelScope.launch {
-            val clientIdToUse = explicitClientId ?: googleClientId.value
-            Log.d("FusionMainViewModel", "Attempting sign-in with ClientID: $clientIdToUse")
+            Log.d("FusionMainViewModel", "Attempting sign-in with ClientID: $googleClientId")
             
-            val result = authManager.signIn(context, clientIdToUse)
+            val result = authManager.signIn(context, googleClientId)
             result.onSuccess { session ->
                 repository.youtubeProvider.resolver.updateUserToken(session.idToken)
-                // Also save the client ID if it was provided explicitly
-                if (!explicitClientId.isNullOrBlank()) {
-                    updateGoogleClientId(explicitClientId)
-                }
                 _eventFlow.emit("Bienvenido, ${session.displayName}")
             }
             result.onFailure { error ->
@@ -460,46 +299,7 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    fun updateGoogleClientId(clientId: String) {
-        viewModelScope.launch {
-            val trimmed = clientId.trim()
-            configManager.saveGoogleClientId(trimmed)
-            _googleClientId.value = trimmed
-        }
-    }
-
-    fun updateThemeMode(mode: String) {
-        configManager.saveThemeMode(mode)
-        _themeMode.value = mode
-    }
-
-    fun updateCustomAccentColor(color: Long) {
-        configManager.saveCustomAccentColor(color)
-        _customAccentColor.value = color
-        updateThemeForCurrentSong()
-    }
-
-    fun updateVisualizerStyle(style: VisualizerStyle) {
-        configManager.saveVisualizerStyle(style)
-        _visualizerStyle.value = style
-        playerManager.setVisualizerStyle(style)
-    }
-
-    fun setFilterVoiceNotesEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            configManager.setFilterVoiceNotesEnabled(enabled)
-            _filterVoiceNotes.value = enabled
-            // Trigger a rescan to apply the new filter
-            rescanLocalLibrary()
-        }
-    }
-
-    fun setFilterDuplicatesEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            configManager.setFilterDuplicatesEnabled(enabled)
-            _filterDuplicates.value = enabled
-            // Trigger a rescan to apply the new filter
-            rescanLocalLibrary()
-        }
+    fun shutdownApp() {
+        playerManager.initiateManualShutdown()
     }
 }

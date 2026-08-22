@@ -38,6 +38,13 @@ enum class VisualizerStyle(val displayName: String) {
 }
 
 @Immutable
+enum class AmbientAuraStyle(val displayName: String) {
+    MINIMAL_EDGE("Borde Minimalista"),
+    SOFT_CORNERS("Esquinas Suaves"),
+    GRADIENT_FLOW("Flujo Gradiente")
+}
+
+@Immutable
 data class PlayerUiState(
     val currentSong: Song? = null,
     val isPlaying: Boolean = false,
@@ -68,6 +75,10 @@ data class PlayerUiState(
     val bassBoostStrength: Int = 0, // 0 to 1000
     val virtualizerStrength: Int = 0, // 0 to 1000
     val volume: Float = 1.0f,
+    val isAmbientAuraEnabled: Boolean = true,
+    val ambientAuraStyle: AmbientAuraStyle = AmbientAuraStyle.MINIMAL_EDGE,
+    val ambientAuraIntensity: Float = 0.4f,
+    val ambientAuraWeight: Float = 0.8f,
     val isShuttingDown: Boolean = false
 ) {
     val progress: Float
