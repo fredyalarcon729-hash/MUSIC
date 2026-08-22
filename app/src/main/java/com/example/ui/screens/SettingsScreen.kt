@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.border
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -55,6 +58,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.core.model.EqualizerPreset
+import com.example.core.model.VisualizerStyle
 import com.example.core.model.PlayerUiState
 import com.example.ui.player.ProfessionalEqualizerDialog
 import com.example.ui.player.SleepTimerDialog
@@ -74,6 +78,10 @@ fun SettingsScreen(
     playerState: PlayerUiState,
     isScanning: Boolean,
     themeMode: String,
+    visualizerStyle: VisualizerStyle,
+    customAccentColor: Long,
+    filterVoiceNotes: Boolean,
+    filterDuplicates: Boolean,
     onRescan: () -> Unit,
     onSelectEqualizer: (EqualizerPreset) -> Unit,
     onSetBandLevel: (Int, Int) -> Unit,
@@ -81,6 +89,10 @@ fun SettingsScreen(
     onSetVirtualizer: (Int) -> Unit,
     onSelectSleepTimer: (Int?) -> Unit,
     onToggleSkipSilence: (Boolean) -> Unit,
+    onToggleFilterVoiceNotes: (Boolean) -> Unit,
+    onToggleFilterDuplicates: (Boolean) -> Unit,
+    onSetVisualizerStyle: (VisualizerStyle) -> Unit,
+    onSetCustomAccentColor: (Long) -> Unit,
     onSetThemeMode: (String) -> Unit,
     onNavigateToServices: () -> Unit,
     modifier: Modifier = Modifier
@@ -211,6 +223,112 @@ fun SettingsScreen(
                 }
             }
 
+            item {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Estilo de Visualizador (Ondas)",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                            columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(2),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.height(180.dp) // Increased height for more styles
+                        ) {
+                            items(VisualizerStyle.entries.size) { index ->
+                                val style = VisualizerStyle.entries[index]
+                                val isSelected = visualizerStyle == style
+                                Surface(
+                                    onClick = { onSetVisualizerStyle(style) },
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = if (isSelected) NeonCyan.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) NeonCyan else Color.Transparent),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Box(modifier = Modifier.padding(12.dp), contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = style.displayName,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = if (isSelected) NeonCyan else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Accent Color Section
+            item {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Color de Acento",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Fija un color o usa el automático (carátula)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            val colors = listOf(
+                                0L to "Auto",
+                                0xFF00E5FF to "Cyan",
+                                0xFFFF007F to "Rosa",
+                                0xFFBB86FC to "Violeta",
+                                0xFF00FF00 to "Verde",
+                                0xFFFFD700 to "Oro",
+                                0xFFFF4500 to "Naranja"
+                            )
+                            
+                            items(colors.size) { index ->
+                                val (colorLong, name) = colors[index]
+                                val isSelected = customAccentColor == colorLong
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.clickable { onSetCustomAccentColor(colorLong) }
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(if (colorLong == 0L) Color.Gray.copy(alpha = 0.3f) else Color(colorLong))
+                                            .border(2.dp, if (isSelected) Color.White else Color.Transparent, CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (colorLong == 0L) Icon(Icons.Default.Refresh, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(name, fontSize = 10.sp, color = if (isSelected) Color.White else TextTertiary)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Audio & Playback Section
             item {
                 Text(
@@ -314,44 +432,108 @@ fun SettingsScreen(
                     border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(NeonCyan.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.Refresh, null, tint = NeonCyan, modifier = Modifier.size(22.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(NeonCyan.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Refresh, null, tint = NeonCyan, modifier = Modifier.size(22.dp))
+                            }
+
+                            Spacer(modifier = Modifier.width(14.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Reescanear Almacenamiento",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Actualiza canciones añadidas recientemente al teléfono",
+                                    style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
+                                    fontSize = 11.sp
+                                )
+                            }
+
+                            Button(
+                                onClick = onRescan,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = NeonPurpleLight,
+                                    contentColor = Color.Black
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(if (isScanning) "Escaneando..." else "Escanear", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
 
-                        Spacer(modifier = Modifier.width(14.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
+                        androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Reescanear Almacenamiento",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "Actualiza canciones añadidas recientemente al teléfono",
-                                style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
-                                fontSize = 11.sp
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Limpiar Librería",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    "Oculta notas de voz y audios de chats (WhatsApp, etc.)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = filterVoiceNotes,
+                                onCheckedChange = onToggleFilterVoiceNotes,
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.Black,
+                                    checkedTrackColor = NeonCyan
+                                )
                             )
                         }
 
-                        Button(
-                            onClick = onRescan,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = NeonPurpleLight,
-                                contentColor = Color.Black
-                            ),
-                            shape = RoundedCornerShape(8.dp)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(if (isScanning) "Escaneando..." else "Escanear", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Evitar Duplicados",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    "Filtra canciones con mismo nombre y duración",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = filterDuplicates,
+                                onCheckedChange = onToggleFilterDuplicates,
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.Black,
+                                    checkedTrackColor = NeonCyan
+                                )
+                            )
                         }
                     }
                 }

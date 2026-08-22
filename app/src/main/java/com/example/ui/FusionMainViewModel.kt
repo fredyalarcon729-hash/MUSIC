@@ -17,6 +17,7 @@ import com.example.core.model.Artist
 import com.example.core.model.DownloadStatus
 import com.example.core.model.EqualizerPreset
 import com.example.core.model.MusicSource
+import com.example.core.model.VisualizerStyle
 import com.example.core.model.PlayerUiState
 import com.example.core.model.Playlist
 import com.example.core.model.Song
@@ -121,6 +122,18 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
     private val _themeMode = MutableStateFlow(configManager.getThemeMode())
     val themeMode: StateFlow<String> = _themeMode.asStateFlow()
 
+    private val _customAccentColor = MutableStateFlow(configManager.getCustomAccentColor())
+    val customAccentColor: StateFlow<Long> = _customAccentColor.asStateFlow()
+
+    private val _visualizerStyle = MutableStateFlow(configManager.getVisualizerStyle())
+    val visualizerStyle: StateFlow<VisualizerStyle> = _visualizerStyle.asStateFlow()
+
+    private val _filterVoiceNotes = MutableStateFlow(configManager.isFilterVoiceNotesEnabled())
+    val filterVoiceNotes: StateFlow<Boolean> = _filterVoiceNotes.asStateFlow()
+
+    private val _filterDuplicates = MutableStateFlow(configManager.isFilterDuplicatesEnabled())
+    val filterDuplicates: StateFlow<Boolean> = _filterDuplicates.asStateFlow()
+
     // Search History
     private val _searchHistory = MutableStateFlow(configManager.getSearchHistory())
     val searchHistory: StateFlow<List<String>> = _searchHistory.asStateFlow()
@@ -130,6 +143,9 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
     fun getDiagnosticInfo() = authManager.getDiagnosticInfo()
 
     init {
+        // Initialize player with saved settings
+        playerManager.setVisualizerStyle(configManager.getVisualizerStyle())
+
         // Observe player changes to update theme
         playerUiState
             .map { it.currentSong?.id }
@@ -144,6 +160,12 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     private fun updateThemeForCurrentSong() {
+        // If user has set a fixed custom accent color, use it
+        if (_customAccentColor.value != 0L) {
+            _accentColor.value = Color(_customAccentColor.value)
+            return
+        }
+
         val song = playerUiState.value.currentSong
         val artworkUri = song?.artworkUri
         if (artworkUri.isNullOrBlank()) {
@@ -296,6 +318,7 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
 
     fun togglePlayPause() = playerManager.togglePlayPause()
     fun seekTo(positionMs: Long) = playerManager.seekTo(positionMs)
+    fun setPlaybackSpeed(speed: Float) = playerManager.setPlaybackSpeed(speed)
     fun skipToNext() = playerManager.skipToNext()
     fun skipToPrevious() = playerManager.skipToPrevious()
     fun toggleShuffle() = playerManager.toggleShuffle()
@@ -448,5 +471,35 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
     fun updateThemeMode(mode: String) {
         configManager.saveThemeMode(mode)
         _themeMode.value = mode
+    }
+
+    fun updateCustomAccentColor(color: Long) {
+        configManager.saveCustomAccentColor(color)
+        _customAccentColor.value = color
+        updateThemeForCurrentSong()
+    }
+
+    fun updateVisualizerStyle(style: VisualizerStyle) {
+        configManager.saveVisualizerStyle(style)
+        _visualizerStyle.value = style
+        playerManager.setVisualizerStyle(style)
+    }
+
+    fun setFilterVoiceNotesEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            configManager.setFilterVoiceNotesEnabled(enabled)
+            _filterVoiceNotes.value = enabled
+            // Trigger a rescan to apply the new filter
+            rescanLocalLibrary()
+        }
+    }
+
+    fun setFilterDuplicatesEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            configManager.setFilterDuplicatesEnabled(enabled)
+            _filterDuplicates.value = enabled
+            // Trigger a rescan to apply the new filter
+            rescanLocalLibrary()
+        }
     }
 }

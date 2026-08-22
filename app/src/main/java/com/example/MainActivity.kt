@@ -16,6 +16,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.animation.core.RepeatMode as AnimRepeatMode
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,8 +36,25 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PowerSettingsNew
+import androidx.compose.material3.*
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.delay
 import com.example.core.model.Song
 import com.example.ui.FusionMainViewModel
 import com.example.ui.components.FusionBottomNav
@@ -121,6 +141,10 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
 
     // State Collection
     val themeMode by viewModel.themeMode.collectAsState()
+    val visualizerStyle by viewModel.visualizerStyle.collectAsState()
+    val customAccentColor by viewModel.customAccentColor.collectAsState()
+    val filterVoiceNotes by viewModel.filterVoiceNotes.collectAsState()
+    val filterDuplicates by viewModel.filterDuplicates.collectAsState()
     val isDarkTheme = when (themeMode) {
         "light" -> false
         "dark" -> true
@@ -143,6 +167,14 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
     val googleClientId by viewModel.googleClientId.collectAsState()
     val accentColor by viewModel.accentColor.collectAsState()
     val playbackPosition by viewModel.playbackPositionMs.collectAsState()
+
+    // Handle Shutdown Event
+    LaunchedEffect(playerState.isShuttingDown) {
+        if (playerState.isShuttingDown) {
+            delay(3000) // Give time for the creative animation
+            (context as? android.app.Activity)?.finish()
+        }
+    }
 
     val searchQuery by viewModel.searchQuery.collectAsState()
     val searchFilter by viewModel.searchFilter.collectAsState()
@@ -177,6 +209,7 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
     val onPlayNext: (Song) -> Unit = remember(viewModel) { { song -> viewModel.playNext(song) } }
     val onAddToQueue: (Song) -> Unit = remember(viewModel) { { song -> viewModel.addToQueue(song) } }
     val onPlayAll: (List<Song>, Boolean) -> Unit = remember(viewModel) { { list, shuffle -> viewModel.playAll(list, shuffle) } }
+    val onSkipPrevious: () -> Unit = remember(viewModel) { { viewModel.skipToPrevious() } }
     val onRescan: () -> Unit = remember(viewModel) { { viewModel.rescanLocalLibrary() } }
 
     Scaffold(
@@ -190,7 +223,8 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
                         progressProvider = { playerState.progress }, // This will still recompose MiniPlayer on position change because it's accessing playerState.progress
                         onExpandPlayer = { isFullPlayerExpanded = true },
                         onTogglePlayPause = { viewModel.togglePlayPause() },
-                        onSkipNext = { viewModel.skipToNext() }
+                        onSkipNext = { viewModel.skipToNext() },
+                        onSkipPrevious = onSkipPrevious
                     )
 
                     // Persistent Material 3 Bottom Nav Bar
@@ -317,6 +351,10 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
                             playerState = playerState,
                             isScanning = isScanning,
                             themeMode = themeMode,
+                            visualizerStyle = visualizerStyle,
+                            customAccentColor = customAccentColor,
+                            filterVoiceNotes = filterVoiceNotes,
+                            filterDuplicates = filterDuplicates,
                             onRescan = onRescan,
                             onSelectEqualizer = { viewModel.setEqualizerPreset(it) },
                             onSetBandLevel = { band, level -> viewModel.setBandLevel(band, level) },
@@ -324,12 +362,32 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
                             onSetVirtualizer = { strength -> viewModel.setVirtualizer(strength) },
                             onSelectSleepTimer = { viewModel.setSleepTimer(it) },
                             onToggleSkipSilence = { viewModel.setSkipSilenceEnabled(it) },
+                            onToggleFilterVoiceNotes = { viewModel.setFilterVoiceNotesEnabled(it) },
+                            onToggleFilterDuplicates = { viewModel.setFilterDuplicatesEnabled(it) },
+                            onSetVisualizerStyle = { viewModel.updateVisualizerStyle(it) },
+                            onSetCustomAccentColor = { viewModel.updateCustomAccentColor(it) },
                             onSetThemeMode = { viewModel.updateThemeMode(it) },
                             onNavigateToServices = { isViewingServices = true }
                         )
                     }
                 }
             }
+
+            // Floating Power Dial
+            if (!isViewingServices) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 12.dp, end = 16.dp)
+                        .statusBarsPadding()
+                ) {
+                    NeonPowerButton(isOn = !playerState.isShuttingDown, accentColor = accentColor)
+                }
+            }
+        }
+
+        if (playerState.isShuttingDown) {
+            ShutdownOverlay(accentColor = accentColor)
         }
     }
 
@@ -357,6 +415,7 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
             onSetPitch = { viewModel.setPitchSemitones(it) },
             onToggleVocalReduction = { viewModel.setVocalReductionEnabled(it) },
             onSetVocalStrength = { viewModel.setVocalReductionStrength(it) },
+            onSetPlaybackSpeed = { viewModel.setPlaybackSpeed(it) },
             onToggleNormalization = { viewModel.toggleNormalization() },
             onSetVolume = { viewModel.setVolume(it) }
         )
@@ -398,5 +457,96 @@ fun MainAppContent(viewModel: FusionMainViewModel) {
                 showCreatePlaylistDialog = false
             }
         )
+    }
+}
+
+@Composable
+fun NeonPowerButton(isOn: Boolean, accentColor: Color) {
+    val glowColor = if (isOn) accentColor else Color.DarkGray
+    val infiniteTransition = rememberInfiniteTransition(label = "power_glow")
+    
+    val shadowBlur by infiniteTransition.animateFloat(
+        initialValue = 8f,
+        targetValue = 16f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = LinearOutSlowInEasing),
+            repeatMode = AnimRepeatMode.Reverse
+        ),
+        label = "shadow_blur"
+    )
+
+    Box(
+        modifier = Modifier
+            .size(42.dp)
+            .shadow(
+                elevation = if (isOn) shadowBlur.dp else 0.dp,
+                shape = CircleShape,
+                spotColor = glowColor,
+                ambientColor = glowColor
+            )
+            .clip(CircleShape)
+            .background(
+                Brush.radialGradient(
+                    colors = listOf(glowColor.copy(alpha = 0.4f), glowColor.copy(alpha = 0.1f))
+                )
+            )
+            .border(2.dp, glowColor.copy(alpha = 0.8f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        // Inner circle "Button"
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(if (isOn) Color.White else Color.Black)
+                .border(1.dp, glowColor, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.PowerSettingsNew,
+                contentDescription = null,
+                tint = if (isOn) accentColor else Color.Gray,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun ShutdownOverlay(accentColor: Color) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.95f))
+            .clickable(enabled = false) {}, // Intercept clicks
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                imageVector = Icons.Default.PowerSettingsNew,
+                contentDescription = null,
+                tint = accentColor,
+                modifier = Modifier.size(100.dp)
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = "FUSION MUSIC",
+                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black, letterSpacing = 2.sp),
+                color = Color.White
+            )
+            Text(
+                text = "CERRANDO SESIÓN...",
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                color = accentColor.copy(alpha = 0.8f)
+            )
+            
+            Spacer(modifier = Modifier.height(60.dp))
+            
+            CircularProgressIndicator(
+                modifier = Modifier.size(40.dp),
+                color = accentColor,
+                strokeWidth = 3.dp
+            )
+        }
     }
 }

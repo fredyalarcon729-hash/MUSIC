@@ -4,6 +4,7 @@ import com.example.core.model.Album
 import com.example.core.model.Artist
 import com.example.core.model.MusicSource
 import com.example.core.model.Song
+import com.example.core.source.ConfigManager
 import com.example.core.source.LocalMusicSourceProvider
 import com.example.core.source.deezer.DeezerMusicSourceProvider
 import com.example.core.source.youtube.YouTubeDownloadManager
@@ -34,7 +35,8 @@ class MusicRepository(
     private val musicDao: MusicDao,
     val downloadManager: YouTubeDownloadManager,
     val youtubeProvider: YouTubeMusicSourceProvider,
-    val deezerProvider: DeezerMusicSourceProvider
+    val deezerProvider: DeezerMusicSourceProvider,
+    private val configManager: ConfigManager
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -136,7 +138,19 @@ class MusicRepository(
     suspend fun rescanLocalMusic() = withContext(Dispatchers.IO) {
         _isScanning.value = true
         try {
-            val loaded = localProvider.getLocalSongs()
+            val filterVoiceNotes = configManager.isFilterVoiceNotesEnabled()
+            val filterDuplicates = configManager.isFilterDuplicatesEnabled()
+            
+            var loaded = localProvider.getLocalSongs(filterVoiceNotes = filterVoiceNotes)
+            
+            if (filterDuplicates) {
+                loaded = loaded.distinctBy { song ->
+                    // Create a unique key based on title, artist and duration (rounded to seconds)
+                    val durationSec = song.durationMs / 1000
+                    "${song.title.lowercase()}_${song.artist.lowercase()}_$durationSec"
+                }
+            }
+            
             _rawSongs.value = loaded
         } catch (e: Exception) {
             e.printStackTrace()

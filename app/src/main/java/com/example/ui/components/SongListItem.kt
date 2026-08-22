@@ -8,6 +8,10 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -59,6 +63,7 @@ import com.example.core.model.MusicSource
 import com.example.core.model.Song
 import com.example.ui.theme.*
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun SongListItem(
     song: Song,
@@ -76,13 +81,17 @@ fun SongListItem(
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    var showInfoDialog by remember { mutableStateOf(false) }
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(if (isCurrent) NeonPurpleLight.copy(alpha = 0.12f) else Color.Transparent)
-            .clickable(onClick = onClick)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = { showInfoDialog = true }
+            )
             .padding(horizontal = 12.dp, vertical = 8.dp)
             .testTag("song_item_${song.id}"),
         verticalAlignment = Alignment.CenterVertically
@@ -334,6 +343,47 @@ fun SongListItem(
                 )
             }
         }
+    }
+
+    if (showInfoDialog) {
+        SongInfoDialog(song = song, onDismiss = { showInfoDialog = false })
+    }
+}
+
+@Composable
+fun SongInfoDialog(song: Song, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { 
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Info, null, tint = NeonCyan)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Detalles del archivo")
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                InfoRow("Título", song.title)
+                InfoRow("Artista", song.artist)
+                InfoRow("Álbum", song.album)
+                InfoRow("Duración", song.durationFormatted)
+                if (song.sizeBytes > 0) InfoRow("Tamaño", song.sizeFormatted)
+                if (song.path.isNotEmpty()) InfoRow("Ruta", song.path)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Cerrar") }
+        },
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(20.dp)
+    )
+}
+
+@Composable
+fun InfoRow(label: String, value: String) {
+    Column {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = NeonCyan)
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 

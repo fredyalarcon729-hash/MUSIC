@@ -21,6 +21,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -28,6 +31,8 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,6 +40,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -57,9 +64,12 @@ fun MiniPlayer(
     onExpandPlayer: () -> Unit,
     onTogglePlayPause: () -> Unit,
     onSkipNext: () -> Unit,
+    onSkipPrevious: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val currentSong = playerState.currentSong
+    val haptic = LocalHapticFeedback.current
+    var offsetX by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0f) }
 
     AnimatedVisibility(
         visible = currentSong != null,
@@ -85,6 +95,23 @@ fun MiniPlayer(
                         ),
                         RoundedCornerShape(16.dp)
                     )
+                    .pointerInput(Unit) {
+                        detectHorizontalDragGestures(
+                            onDragEnd = {
+                                if (offsetX > 100) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    onSkipPrevious()
+                                } else if (offsetX < -100) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    onSkipNext()
+                                }
+                                offsetX = 0f
+                            },
+                            onHorizontalDrag = { _, dragAmount ->
+                                offsetX += dragAmount
+                            }
+                        )
+                    }
                     .clickable(onClick = onExpandPlayer)
                     .testTag("mini_player_bar"),
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f)
@@ -139,6 +166,23 @@ fun MiniPlayer(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
+
+                            if (playerState.sleepTimerMinutesLeft != null) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.Timer,
+                                        null,
+                                        tint = NeonCyan,
+                                        modifier = Modifier.size(10.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "${playerState.sleepTimerMinutesLeft}m",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                        color = NeonCyan
+                                    )
+                                }
+                            }
                         }
 
                         // Play/Pause Button
@@ -154,7 +198,10 @@ fun MiniPlayer(
                                 )
                             } else {
                                 IconButton(
-                                    onClick = onTogglePlayPause,
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        onTogglePlayPause()
+                                    },
                                     modifier = Modifier
                                         .size(38.dp)
                                         .clip(CircleShape)

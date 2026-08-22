@@ -27,6 +27,17 @@ enum class EqualizerPreset(val displayName: String, val bassGain: Float, val mid
 }
 
 @Immutable
+enum class VisualizerStyle(val displayName: String) {
+    BARS("Barras Neón"),
+    SYMMETRIC("Simétrico"),
+    DOTS("Puntos Rebotantes"),
+    PIXELS("Píxeles Retro"),
+    RING("Anillo Circular"),
+    WAVE("Onda Fluida"),
+    MIRROR("Espectro Espejo")
+}
+
+@Immutable
 data class PlayerUiState(
     val currentSong: Song? = null,
     val isPlaying: Boolean = false,
@@ -40,6 +51,7 @@ data class PlayerUiState(
     val currentQueueIndex: Int = -1,
     val sleepTimerMinutesLeft: Int? = null,
     val playbackSpeed: Float = 1.0f,
+    val visualizerStyle: VisualizerStyle = VisualizerStyle.BARS,
     val equalizerPreset: EqualizerPreset = EqualizerPreset.FLAT,
     val audioQuality: AudioQuality = AudioQuality.HIGH,
     val currentLyrics: Lyrics? = null,
@@ -55,7 +67,8 @@ data class PlayerUiState(
     val bandLevels: Map<Int, Int> = emptyMap(), // Band index to level in milliBels
     val bassBoostStrength: Int = 0, // 0 to 1000
     val virtualizerStrength: Int = 0, // 0 to 1000
-    val volume: Float = 1.0f
+    val volume: Float = 1.0f,
+    val isShuttingDown: Boolean = false
 ) {
     val progress: Float
         get() = if (durationMs > 0) (currentPositionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f) else 0f

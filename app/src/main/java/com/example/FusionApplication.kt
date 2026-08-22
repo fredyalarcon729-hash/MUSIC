@@ -74,7 +74,8 @@ class FusionApplication : Application() {
             musicDao = database.musicDao(),
             downloadManager = downloadManager,
             youtubeProvider = youTubeProvider,
-            deezerProvider = deezerProvider
+            deezerProvider = deezerProvider,
+            configManager = configManager
         )
         authManager = AuthManager(this)
         playerManager = FusionPlayerManager.getInstance(this)

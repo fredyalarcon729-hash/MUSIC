@@ -60,7 +60,7 @@ class LocalMusicSourceProvider(
      * Scans MediaStore for local audio files. If empty or no permission yet, returns
      * high-quality built-in demo tracks so the user can test the player immediately.
      */
-    suspend fun getLocalSongs(): List<Song> = withContext(Dispatchers.IO) {
+    suspend fun getLocalSongs(filterVoiceNotes: Boolean = true): List<Song> = withContext(Dispatchers.IO) {
         val songsList = mutableListOf<Song>()
         val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
@@ -83,7 +83,18 @@ class LocalMusicSourceProvider(
             MediaStore.Audio.Media.DATA
         )
 
-        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.DURATION} >= 5000"
+        val selection = if (filterVoiceNotes) {
+            val excludedFolders = listOf("WhatsApp", "Telegram", "Recorder", "Voice Recorder", "Notifications", "Alarms", "Ringtones")
+            val selectionBuilder = StringBuilder()
+            selectionBuilder.append("${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.DURATION} >= 20000")
+            excludedFolders.forEach { folder ->
+                selectionBuilder.append(" AND ${MediaStore.Audio.Media.DATA} NOT LIKE '%/$folder/%'")
+            }
+            selectionBuilder.toString()
+        } else {
+            "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.DURATION} >= 5000"
+        }
+
         val sortOrder = "${MediaStore.Audio.Media.TITLE} ASC"
 
         try {

@@ -2,9 +2,11 @@ package com.example.ui.player
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.animation.core.RepeatMode as AnimRepeatMode
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -39,8 +41,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import android.media.audiofx.Visualizer
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.PI
 import com.example.core.model.EqualizerPreset
 import com.example.core.model.Lyrics
+import com.example.core.model.VisualizerStyle
 import com.example.core.model.PlayerUiState
 import com.example.core.model.RepeatMode as DomainRepeatMode
 import com.example.ui.theme.*
@@ -71,6 +80,7 @@ fun FullPlayerSheet(
     onSetPitch: (Int) -> Unit,
     onToggleVocalReduction: (Boolean) -> Unit,
     onSetVocalStrength: (Float) -> Unit,
+    onSetPlaybackSpeed: (Float) -> Unit,
     onToggleNormalization: () -> Unit,
     onSetVolume: (Float) -> Unit
 ) {
@@ -86,14 +96,41 @@ fun FullPlayerSheet(
 
     var showTimerDialog by remember { mutableStateOf(false) }
     var showEqDialog by remember { mutableStateOf(false) }
+    var showSpeedDialog by remember { mutableStateOf(false) }
     var isDraggingSlider by remember { mutableStateOf(false) }
     var dragSliderValue by remember { mutableFloatStateOf(0f) }
     var showLyrics by remember { mutableStateOf(false) }
 
     var showVolumeOverlay by remember { mutableStateOf(false) }
     var volumeOverlayJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    var lastVolumeBeforeMute by remember { mutableFloatStateOf(0.5f) }
     val scope = rememberCoroutineScope()
     
+    var magnitudes by remember { mutableStateOf(FloatArray(32) { 0.1f }) }
+    DisposableEffect(playerState.audioSessionId) {
+        if (playerState.audioSessionId <= 0) return@DisposableEffect onDispose {}
+        val visualizer = try {
+            Visualizer(playerState.audioSessionId).apply {
+                captureSize = 128
+                setDataCaptureListener(object : Visualizer.OnDataCaptureListener {
+                    override fun onWaveFormDataCapture(v: Visualizer?, waveform: ByteArray?, samplingRate: Int) {}
+                    override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {
+                        if (fft == null) return
+                        val newMagnitudes = FloatArray(32)
+                        for (i in 0 until 32) {
+                            val real = fft[i * 2].toInt(); val imag = fft[i * 2 + 1].toInt()
+                            val mag = Math.sqrt((real * real + imag * imag).toDouble()).toFloat()
+                            newMagnitudes[i] = (mag / 50f).coerceIn(0.1f, 1f)
+                        }
+                        magnitudes = newMagnitudes
+                    }
+                }, Visualizer.getMaxCaptureRate() / 2, false, true)
+                enabled = true
+            }
+        } catch (e: Exception) { null }
+        onDispose { visualizer?.enabled = false; visualizer?.release() }
+    }
+
     // Fix: Use rememberUpdatedState to avoid capturing stale values in pointerInput
     val currentVolume by rememberUpdatedState(playerState.volume)
     val currentOnSetVolume by rememberUpdatedState(onSetVolume)
@@ -132,10 +169,13 @@ fun FullPlayerSheet(
                                 )
                             )
                         }
-                        .blur(60.dp),
+                        .blur(70.dp),
                     contentScale = ContentScale.Crop
                 )
             }
+
+            // Animated Particle Background
+            AnimatedParticleBackground(animatedAccentColor)
 
             // Normal Content (Controls & Artwork)
             Column(
@@ -192,13 +232,42 @@ fun FullPlayerSheet(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Artwork Area
+                val avgMagnitude = magnitudes.average().toFloat()
+                val pulseScale by animateFloatAsState(
+                    targetValue = if (playerState.isPlaying) 1f + (avgMagnitude * 0.05f) else 1f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                    label = "pulse_scale"
+                )
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(0.85f)
                         .aspectRatio(1f)
+                        .graphicsLayer {
+                            scaleX = pulseScale
+                            scaleY = pulseScale
+                        }
                         .shadow(40.dp, RoundedCornerShape(24.dp), spotColor = animatedAccentColor)
                         .clip(RoundedCornerShape(24.dp))
                         .border(1.dp, animatedAccentColor.copy(alpha = 0.3f), RoundedCornerShape(24.dp))
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onDoubleTap = {
+                                    if (currentVolume > 0f) {
+                                        lastVolumeBeforeMute = currentVolume
+                                        currentOnSetVolume(0f)
+                                    } else {
+                                        currentOnSetVolume(lastVolumeBeforeMute)
+                                    }
+                                    showVolumeOverlay = true
+                                    volumeOverlayJob?.cancel()
+                                    volumeOverlayJob = scope.launch {
+                                        delay(1500)
+                                        showVolumeOverlay = false
+                                    }
+                                }
+                            )
+                        }
                         .pointerInput(Unit) {
                             detectVerticalDragGestures(
                                 onDragStart = { showVolumeOverlay = true },
@@ -248,7 +317,18 @@ fun FullPlayerSheet(
                 // Song Info
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(currentSong.title, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold), color = TextPrimary, maxLines = 1)
+                        Text(
+                            currentSong.title,
+                            style = MaterialTheme.typography.headlineMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                shadow = androidx.compose.ui.graphics.Shadow(
+                                    color = animatedAccentColor.copy(alpha = 0.5f),
+                                    blurRadius = 15f
+                                )
+                            ),
+                            color = TextPrimary,
+                            maxLines = 1
+                        )
                         Text(currentSong.artist, style = MaterialTheme.typography.titleMedium, color = TextSecondary, maxLines = 1)
                     }
                     IconButton(onClick = onToggleFavorite) {
@@ -257,7 +337,12 @@ fun FullPlayerSheet(
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
-                NeonVisualizer(playerState.audioSessionId, playerState.isPlaying, if (playerState.isKaraokeModeActive) NeonPink else animatedAccentColor)
+                NeonVisualizer(
+                    magnitudes = magnitudes,
+                    isPlaying = playerState.isPlaying,
+                    style = playerState.visualizerStyle,
+                    animatedAccentColor = if (playerState.isKaraokeModeActive) NeonPink else animatedAccentColor
+                )
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // Playback Slider
@@ -292,9 +377,19 @@ fun FullPlayerSheet(
                 Spacer(modifier = Modifier.weight(1f))
                 
                 // Extra Tools
-                Row(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp).clip(RoundedCornerShape(20.dp)).background(Color.White.copy(alpha = 0.05f)).padding(16.dp), horizontalArrangement = Arrangement.SpaceAround) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 24.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color.White.copy(alpha = 0.08f)) // More glassmorphic
+                        .border(0.5.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(20.dp))
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceAround
+                ) {
                     ToolItem(Icons.Default.Timer, if (playerState.sleepTimerMinutesLeft != null) "${playerState.sleepTimerMinutesLeft}m" else "Timer", playerState.sleepTimerMinutesLeft != null, animatedAccentColor) { showTimerDialog = true }
                     ToolItem(Icons.Default.Equalizer, "EQ", true, animatedAccentColor) { showEqDialog = true }
+                    ToolItem(Icons.Default.Speed, "${playerState.playbackSpeed}x", playerState.playbackSpeed != 1.0f, animatedAccentColor) { showSpeedDialog = true }
                     ToolItem(Icons.Default.Tune, "Norm", playerState.isNormalizationEnabled, animatedAccentColor) { onToggleNormalization() }
                     ToolItem(Icons.Default.QueueMusic, "Cola", false, animatedAccentColor) { onOpenQueue() }
                 }
@@ -335,6 +430,7 @@ fun FullPlayerSheet(
 
     // Dialogs...
     if (showTimerDialog) SleepTimerDialog(playerState.sleepTimerMinutesLeft, { showTimerDialog = false }, { onSelectSleepTimer(it); showTimerDialog = false })
+    if (showSpeedDialog) PlaybackSpeedDialog(playerState.playbackSpeed, { showSpeedDialog = false }, { onSetPlaybackSpeed(it); showSpeedDialog = false })
     if (showEqDialog) ProfessionalEqualizerDialog(
         playerState = playerState,
         accentColor = animatedAccentColor,
@@ -526,47 +622,216 @@ fun LyricsDisplay(
 }
 
 @Composable
-fun NeonVisualizer(audioSessionId: Int, isPlaying: Boolean, animatedAccentColor: Color) {
-    var magnitudes by remember { mutableStateOf(FloatArray(32) { 0.1f }) }
-    DisposableEffect(audioSessionId) {
-        if (audioSessionId <= 0) return@DisposableEffect onDispose {}
-        val visualizer = try {
-            Visualizer(audioSessionId).apply {
-                captureSize = 128
-                setDataCaptureListener(object : Visualizer.OnDataCaptureListener {
-                    override fun onWaveFormDataCapture(v: Visualizer?, waveform: ByteArray?, samplingRate: Int) {}
-                    override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {
-                        if (fft == null) return
-                        val newMagnitudes = FloatArray(32)
-                        for (i in 0 until 32) {
-                            val real = fft[i * 2].toInt(); val imag = fft[i * 2 + 1].toInt()
-                            val mag = Math.sqrt((real * real + imag * imag).toDouble()).toFloat()
-                            newMagnitudes[i] = (mag / 50f).coerceIn(0.1f, 1f)
-                        }
-                        magnitudes = newMagnitudes
+fun NeonVisualizer(magnitudes: FloatArray, isPlaying: Boolean, style: VisualizerStyle, animatedAccentColor: Color) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(60.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        when (style) {
+            VisualizerStyle.RING -> {
+                androidx.compose.foundation.Canvas(modifier = Modifier.size(60.dp)) {
+                    val center = androidx.compose.ui.geometry.Offset(size.width / 2, size.height / 2)
+                    val radius = size.minDimension / 2 - 4.dp.toPx()
+                    magnitudes.forEachIndexed { index, mag ->
+                        val angle = (index.toFloat() / magnitudes.size.toFloat()) * 2 * PI.toFloat()
+                        val height = if (isPlaying) mag * 12.dp.toPx() else 2.dp.toPx()
+                        val start = androidx.compose.ui.geometry.Offset(
+                            center.x + radius * cos(angle),
+                            center.y + radius * sin(angle)
+                        )
+                        val end = androidx.compose.ui.geometry.Offset(
+                            center.x + (radius + height) * cos(angle),
+                            center.y + (radius + height) * sin(angle)
+                        )
+                        drawLine(
+                            color = animatedAccentColor,
+                            start = start,
+                            end = end,
+                            strokeWidth = 2.dp.toPx(),
+                            cap = StrokeCap.Round
+                        )
                     }
-                }, Visualizer.getMaxCaptureRate() / 2, false, true)
-                enabled = true
+                }
             }
-        } catch (e: Exception) { null }
-        onDispose { visualizer?.enabled = false; visualizer?.release() }
-    }
-    Row(modifier = Modifier.fillMaxWidth().height(48.dp), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.Bottom) {
-        magnitudes.forEach { mag ->
-            Box(modifier = Modifier.weight(1f).fillMaxHeight(if (isPlaying) mag else 0.1f).clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)).background(Brush.verticalGradient(listOf(animatedAccentColor, animatedAccentColor.copy(alpha = 0.4f), Color.Transparent))))
+            VisualizerStyle.WAVE -> {
+                androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                    val path = Path()
+                    val width = size.width
+                    val height = size.height
+                    val centerY = height / 2
+                    
+                    path.moveTo(0f, centerY)
+                    magnitudes.forEachIndexed { index, mag ->
+                        val x = (index.toFloat() / (magnitudes.size - 1)) * width
+                        val y = centerY + (if (isPlaying) (mag - 0.5f) * height else 0f)
+                        path.lineTo(x, y)
+                    }
+                    
+                    drawPath(
+                        path = path,
+                        color = animatedAccentColor,
+                        style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+                    )
+                }
+            }
+            VisualizerStyle.MIRROR -> {
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    magnitudes.forEach { mag ->
+                        val h = if (isPlaying) (mag * 0.8f).coerceIn(0.1f, 1f) else 0.1f
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(h)
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(Color.Transparent, animatedAccentColor, Color.Transparent)
+                                    )
+                                )
+                        )
+                    }
+                }
+            }
+            else -> {
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    magnitudes.forEach { mag ->
+                        val heightFactor = if (isPlaying) mag else 0.1f
+                        
+                        when (style) {
+                            VisualizerStyle.BARS -> {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight(heightFactor)
+                                        .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                        .background(Brush.verticalGradient(listOf(animatedAccentColor, animatedAccentColor.copy(alpha = 0.4f), Color.Transparent)))
+                                )
+                            }
+                            VisualizerStyle.SYMMETRIC -> {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight(heightFactor)
+                                        .align(Alignment.CenterVertically)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(animatedAccentColor)
+                                )
+                            }
+                            VisualizerStyle.DOTS -> {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .size(if (isPlaying) (mag * 24).dp else 4.dp)
+                                        .clip(CircleShape)
+                                        .background(animatedAccentColor)
+                                        .align(Alignment.CenterVertically)
+                                )
+                            }
+                            VisualizerStyle.PIXELS -> {
+                                Column(
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                    verticalArrangement = Arrangement.Bottom,
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    val numBlocks = (heightFactor * 8).toInt().coerceAtLeast(1)
+                                    repeat(numBlocks) {
+                                        Box(modifier = Modifier.fillMaxWidth().height(4.dp).padding(vertical = 1.dp).background(animatedAccentColor))
+                                    }
+                                }
+                            }
+                            else -> {}
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-fun SleepTimerDialog(currentMinutes: Int?, onDismiss: () -> Unit, onSelect: (Int?) -> Unit) {
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Apagado automático") }, text = {
+fun PlaybackSpeedDialog(currentSpeed: Float, onDismiss: () -> Unit, onSelect: (Float) -> Unit) {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Velocidad de reproducción") }, text = {
         Column {
-            listOf(null, 15, 30, 45, 60).forEach { mins ->
-                TextItem(if (mins == null) "Desactivado" else "$mins minutos", currentMinutes == mins) { onSelect(mins) }
+            listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f).forEach { speed ->
+                TextItem("${speed}x", currentSpeed == speed) { onSelect(speed) }
             }
         }
     }, confirmButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } }, containerColor = ObsidianSurfaceVariant)
+}
+
+@Composable
+fun SleepTimerDialog(currentMinutes: Int?, onDismiss: () -> Unit, onSelect: (Int?) -> Unit) {
+    var customValue by remember { mutableStateOf("") }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Apagado automático") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Selecciona un tiempo o ingresa uno personalizado:", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(15, 30, 45, 60).forEach { mins ->
+                        Surface(
+                            onClick = { onSelect(mins) },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (currentMinutes == mins) NeonCyan.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (currentMinutes == mins) NeonCyan else Color.Transparent),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(modifier = Modifier.padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+                                Text("${mins}m", color = if (currentMinutes == mins) NeonCyan else Color.White, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = customValue,
+                    onValueChange = { if (it.all { char -> char.isDigit() } && it.length <= 3) customValue = it },
+                    label = { Text("Minutos personalizados") },
+                    placeholder = { Text("Ej: 120") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                    ),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = NeonCyan,
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
+                    )
+                )
+
+                TextItem("Desactivar temporizador", currentMinutes == null) { onSelect(null) }
+            }
+        },
+        confirmButton = {
+            Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                TextButton(onClick = onDismiss) { Text("Cancelar", color = TextSecondary) }
+                if (customValue.isNotEmpty()) {
+                    TextButton(onClick = { onSelect(customValue.toIntOrNull()) }) {
+                        Text("Iniciar", color = NeonCyan, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        },
+        containerColor = ObsidianSurfaceVariant
+    )
 }
 
 @Composable
@@ -600,6 +865,60 @@ fun VolumeIndicator(volume: Float, accentColor: Color) {
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = Color.White
             )
+        }
+    }
+}
+
+@Composable
+fun AnimatedParticleBackground(accentColor: Color) {
+    val infiniteTransition = rememberInfiniteTransition(label = "particles")
+    val particles = remember { List(15) { (0..100).random() } }
+    
+    Box(modifier = Modifier.fillMaxSize()) {
+        particles.forEachIndexed { index, startPos ->
+            val duration = remember { (4000..8000).random() }
+            val delay = remember { (0..2000).random() }
+            
+            val yPos by infiniteTransition.animateFloat(
+                initialValue = 1.1f,
+                targetValue = -0.1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(duration, delayMillis = delay, easing = LinearEasing),
+                    repeatMode = AnimRepeatMode.Restart
+                ),
+                label = "particle_y_$index"
+            )
+            
+            val xOffset by infiniteTransition.animateFloat(
+                initialValue = -20f,
+                targetValue = 20f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(duration / 2, easing = LinearEasing),
+                    repeatMode = AnimRepeatMode.Reverse
+                ),
+                label = "particle_x_$index"
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        translationY = yPos * size.height
+                        translationX = (startPos.toFloat() / 100f) * size.width + xOffset
+                        alpha = 0.15f
+                    }
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(remember { (4..12).random().dp })
+                        .clip(CircleShape)
+                        .background(
+                            Brush.radialGradient(
+                                listOf(accentColor, Color.Transparent)
+                            )
+                        )
+                )
+            }
         }
     }
 }

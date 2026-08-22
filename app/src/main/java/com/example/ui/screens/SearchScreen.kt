@@ -111,7 +111,7 @@ fun SearchScreen(
         OutlinedTextField(
             value = query,
             onValueChange = onQueryChanged,
-            placeholder = { Text("Canciones, artistas, Deezer...", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) },
+            placeholder = { Text("Canciones, artistas, Deezer...", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Default.Search,
@@ -134,12 +134,12 @@ fun SearchScreen(
                 }
             },
             singleLine = true,
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(24.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                focusedBorderColor = NeonCyan,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                focusedContainerColor = Color.White.copy(alpha = 0.05f),
+                unfocusedContainerColor = Color.White.copy(alpha = 0.03f),
+                focusedBorderColor = NeonCyan.copy(alpha = 0.5f),
+                unfocusedBorderColor = Color.White.copy(alpha = 0.1f),
                 focusedTextColor = MaterialTheme.colorScheme.onSurface,
                 unfocusedTextColor = MaterialTheme.colorScheme.onSurface
             ),

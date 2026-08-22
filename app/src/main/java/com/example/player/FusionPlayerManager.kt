@@ -21,6 +21,7 @@ import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.core.net.toUri
 import com.example.core.model.EqualizerPreset
 import com.example.core.model.MusicSource
+import com.example.core.model.VisualizerStyle
 import com.example.core.model.PlayerUiState
 import com.example.core.model.RepeatMode
 import com.example.core.model.Song
@@ -188,8 +189,14 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
 
     fun setPitchSemitones(semitones: Int) {
         val factor = Math.pow(2.0, semitones / 12.0).toFloat()
-        exoPlayer.playbackParameters = PlaybackParameters(1.0f, factor)
+        exoPlayer.playbackParameters = PlaybackParameters(_uiState.value.playbackSpeed, factor)
         _uiState.update { it.copy(pitchSemitones = semitones) }
+    }
+
+    fun setPlaybackSpeed(speed: Float) {
+        val factor = Math.pow(2.0, _uiState.value.pitchSemitones / 12.0).toFloat()
+        exoPlayer.playbackParameters = PlaybackParameters(speed, factor)
+        _uiState.update { it.copy(playbackSpeed = speed) }
     }
 
     fun setVocalReductionEnabled(enabled: Boolean) {
@@ -209,6 +216,10 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
     fun setNormalizationEnabled(enabled: Boolean) {
         normalizationProcessor.setEnabled(enabled)
         _uiState.update { it.copy(isNormalizationEnabled = enabled) }
+    }
+
+    fun setVisualizerStyle(style: VisualizerStyle) {
+        _uiState.update { it.copy(visualizerStyle = style) }
     }
 
     fun setVolume(volume: Float) {
@@ -377,8 +388,9 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
                 _uiState.update { it.copy(sleepTimerMinutesLeft = remaining) }
             }
             if (isActive) {
+                _uiState.update { it.copy(isShuttingDown = true, sleepTimerMinutesLeft = null) }
                 exoPlayer.pause()
-                _uiState.update { it.copy(sleepTimerMinutesLeft = null) }
+                // The activity will observe isShuttingDown and trigger the animation/close
             }
         }
     }
