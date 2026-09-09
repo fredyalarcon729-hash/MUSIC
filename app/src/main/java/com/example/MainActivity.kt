@@ -60,6 +60,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // Break any potential shutdown loop on start
+        mainViewModel.resetShutdownState()
+
         setContent {
             val themeMode by settingsViewModel.themeMode.collectAsState()
             val isDarkTheme = when (themeMode) {

@@ -11,7 +11,8 @@ enum class MusicSource(val displayName: String, val badgeColorHex: Long) {
     YOUTUBE("YouTube Music", 0xFFFF0000),
     SPOTIFY("Spotify", 0xFF1DB954),
     TIDAL("TIDAL", 0xFF00FFFF),
-    DEEZER("Deezer", 0xFFFF007F)
+    DEEZER("Deezer", 0xFFFF007F),
+    FIREBASE("Firebase Cloud", 0xFFFFCA28)
 }
 
 /**

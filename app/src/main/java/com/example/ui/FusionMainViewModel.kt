@@ -302,4 +302,8 @@ class FusionMainViewModel(application: Application) : AndroidViewModel(applicati
     fun shutdownApp() {
         playerManager.initiateManualShutdown()
     }
+
+    fun resetShutdownState() {
+        playerManager.resetShutdownState()
+    }
 }

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "101236967125",
+    "project_id": "gtuwag-92252124",
+    "storage_bucket": "gtuwag-92252124.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:101236967125:android:fe4a59c4e6202c1e5d845c",
+        "android_client_info": {
+          "package_name": "com.aistudio.fusionmusic.gtuwag"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAevwcQrr27QsE_cr0Cmsm5iRe4J5JaOJE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

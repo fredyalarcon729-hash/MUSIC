@@ -52,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -63,6 +64,7 @@ import com.example.core.model.PlayerUiState
 import com.example.ui.player.ProfessionalEqualizerDialog
 import com.example.ui.player.SleepTimerDialog
 import com.example.ui.theme.NeonCyan
+import com.example.ui.theme.NeonPink
 import com.example.ui.theme.NeonPurpleLight
 import com.example.ui.theme.ObsidianBorder
 import com.example.ui.theme.ObsidianCard
@@ -86,7 +88,11 @@ fun SettingsScreen(
     ambientAuraStyle: com.example.core.model.AmbientAuraStyle,
     ambientAuraIntensity: Float,
     ambientAuraWeight: Float,
+    isIgnoreAudioFocusEnabled: Boolean,
+    isMultiAudioSupported: Boolean,
+    isSyncingCloud: Boolean,
     onRescan: () -> Unit,
+    onSyncCloud: () -> Unit,
     onSelectEqualizer: (com.example.core.model.EqualizerPreset) -> Unit,
     onSetBandLevel: (Int, Int) -> Unit,
     onSetBassBoost: (Int) -> Unit,
@@ -96,6 +102,7 @@ fun SettingsScreen(
     onToggleFilterVoiceNotes: (Boolean) -> Unit,
     onToggleFilterDuplicates: (Boolean) -> Unit,
     onToggleAmbientAura: (Boolean) -> Unit,
+    onToggleIgnoreAudioFocus: (Boolean) -> Unit,
     onSetAmbientAuraStyle: (com.example.core.model.AmbientAuraStyle) -> Unit,
     onSetAmbientAuraIntensity: (Float) -> Unit,
     onSetAmbientAuraWeight: (Float) -> Unit,
@@ -416,6 +423,42 @@ fun SettingsScreen(
                                 )
                             )
                         }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .then(if (!isMultiAudioSupported) Modifier.graphicsLayer { alpha = 0.5f } else Modifier)
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Reproducción Ininterrumpida",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = if (isMultiAudioSupported) MaterialTheme.colorScheme.onSurface else TextTertiary
+                                )
+                                Text(
+                                    text = if (isMultiAudioSupported) "La música no se detiene en llamadas" else "Dispositivo no compatible con multi-audio",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (isMultiAudioSupported) MaterialTheme.colorScheme.onSurfaceVariant else NeonPink.copy(alpha = 0.7f)
+                                )
+                            }
+                            Switch(
+                                checked = isIgnoreAudioFocusEnabled,
+                                onCheckedChange = onToggleIgnoreAudioFocus,
+                                enabled = isMultiAudioSupported,
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.Black,
+                                    checkedTrackColor = NeonCyan,
+                                    disabledCheckedTrackColor = Color.Gray,
+                                    disabledUncheckedTrackColor = Color.DarkGray
+                                )
+                            )
+                        }
                     }
                 }
             }
@@ -573,6 +616,61 @@ fun SettingsScreen(
                         androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         Spacer(modifier = Modifier.height(16.dp))
 
+                        // Cloud Sync Button
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(com.example.ui.theme.NeonPink.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Refresh, null, tint = com.example.ui.theme.NeonPink, modifier = Modifier.size(22.dp))
+                            }
+
+                            Spacer(modifier = Modifier.width(14.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Sincronizar Nube (Firebase)",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Busca nuevos archivos .mp3 subidos a tu bucket",
+                                    style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
+                                    fontSize = 11.sp
+                                )
+                            }
+
+                            Button(
+                                onClick = onSyncCloud,
+                                enabled = !isSyncingCloud,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = com.example.ui.theme.NeonPink,
+                                    contentColor = Color.Black
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                if (isSyncingCloud) {
+                                    androidx.compose.material3.CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        color = Color.Black,
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Text("Sincronizar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Spacer(modifier = Modifier.height(16.dp))
+
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -648,39 +746,90 @@ fun SettingsScreen(
             }
 
             item {
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val packageInfo = remember {
+                    try {
+                        context.packageManager.getPackageInfo(context.packageName, 0)
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+                val versionName = packageInfo?.versionName ?: "1.0"
+
                 Surface(
                     shape = RoundedCornerShape(14.dp),
                     color = MaterialTheme.colorScheme.surface,
                     border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
+                    Column {
+                        // Author Item
+                        Row(
                             modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(NeonPurpleLight.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center
+                                .clickable { /* Open portfolio or social if needed */ }
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.Person, null, tint = NeonPurpleLight, modifier = Modifier.size(24.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(NeonPurpleLight.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Person, null, tint = NeonPurpleLight, modifier = Modifier.size(24.dp))
+                            }
+
+                            Spacer(modifier = Modifier.width(14.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Autor",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Fredy Alarcón Ordoñez",
+                                    style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
+                                    fontSize = 13.sp
+                                )
+                            }
                         }
 
-                        Spacer(modifier = Modifier.width(14.dp))
+                        androidx.compose.material3.HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        )
 
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Autor",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "Fredy Alarcón Ordoñez",
-                                style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
-                                fontSize = 13.sp
-                            )
+                        // Version Item
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(NeonCyan.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Info, null, tint = NeonCyan, modifier = Modifier.size(22.dp))
+                            }
+
+                            Spacer(modifier = Modifier.width(14.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Versión de la Aplicación",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "v$versionName",
+                                    style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
+                                    fontSize = 13.sp
+                                )
+                            }
                         }
                     }
                 }

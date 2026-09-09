@@ -79,6 +79,7 @@ data class PlayerUiState(
     val ambientAuraStyle: AmbientAuraStyle = AmbientAuraStyle.MINIMAL_EDGE,
     val ambientAuraIntensity: Float = 0.4f,
     val ambientAuraWeight: Float = 0.8f,
+    val isIgnoreAudioFocusEnabled: Boolean = false,
     val isShuttingDown: Boolean = false
 ) {
     val progress: Float

@@ -71,6 +71,17 @@ class ExternalServicesManager(
                 officialRequirements = "Módulo oficial activado con streaming de alta velocidad"
             ),
             ExternalServiceDescriptor(
+                source = MusicSource.FIREBASE,
+                title = "Firebase Cloud Library",
+                description = "Tu biblioteca personal en la nube. Sincroniza tus MP3 desde Firestore y Storage.",
+                apiDocUrl = "https://firebase.google.com/docs/firestore",
+                sdkType = "Firebase Firestore + Storage",
+                isConnected = true,
+                isEnabled = true,
+                badgeColorHex = 0xFFFFCA28,
+                officialRequirements = "Requiere colección 'music' en Firestore"
+            ),
+            ExternalServiceDescriptor(
                 source = MusicSource.YOUTUBE,
                 title = "YouTube Music (Mantenimiento)",
                 description = "Búsqueda integrada y reproducción. Actualmente en mantenimiento para mejorar estabilidad.",

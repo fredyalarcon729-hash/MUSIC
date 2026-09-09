@@ -1,7 +1,5 @@
-- [x] Hacer funcional y estético el Botón de Encendido Neon
-    - [x] Implementar `initiateManualShutdown()` en `FusionPlayerManager.kt`
-    - [x] Implementar `shutdownApp()` en `FusionMainViewModel.kt`
-    - [x] Refactorizar y embellecer `NeonPowerButton` en `MainActivity.kt`
-    - [x] Conectar el botón con la lógica de apagado
-- [x] Verificar la secuencia completa de apagado
-- [x] Actualizar walkthrough
+- [x] Estabilizar el inicio de la aplicación (Firebase)
+    - [x] Inicializar `FirebaseApp` explícitamente en `FusionApplication.kt`
+    - [x] Refactorizar `FirebaseMusicSourceProvider.kt` para carga perezosa y manejo de errores
+    - [x] Validar estabilidad en el dispositivo
+- [x] Actualizar walkthrough con notas de estabilidad

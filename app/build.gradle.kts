@@ -100,8 +100,9 @@ dependencies {
   implementation(libs.androidx.media3.ui)
   implementation(libs.converter.moshi)
   implementation(libs.firebase.ai)
-  // Uncomment to use Firestore:
-  // implementation(libs.firebase.firestore)
+  implementation(libs.firebase.firestore)
+  implementation(libs.firebase.storage)
+  implementation(libs.kotlinx.coroutines.play.services)
 
   // Using Firebase Auth and Google Sign-In via Credential Manager:
   implementation(libs.firebase.auth)
@@ -111,6 +112,7 @@ dependencies {
   implementation(libs.firebase.appcheck.recaptcha)
   implementation(libs.kotlinx.coroutines.android)
   implementation(libs.kotlinx.coroutines.core)
+  implementation(libs.kotlinx.coroutines.play.services)
   implementation(libs.logging.interceptor)
   implementation(libs.moshi.kotlin)
   implementation(libs.okhttp)

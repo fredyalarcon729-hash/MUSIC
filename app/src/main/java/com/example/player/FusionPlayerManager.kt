@@ -91,7 +91,7 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
         }
 
         ExoPlayer.Builder(applicationContext, renderersFactory)
-            .setAudioAttributes(audioAttributes, true)
+            .setAudioAttributes(audioAttributes, !configManager.isIgnoreAudioFocusEnabled())
             .setHandleAudioBecomingNoisy(true)
             .build().apply {
                 addListener(playerListener)
@@ -105,7 +105,8 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
             isAmbientAuraEnabled = configManager.isAmbientAuraEnabled(),
             ambientAuraStyle = configManager.getAmbientAuraStyle(),
             ambientAuraIntensity = configManager.getAmbientAuraIntensity(),
-            ambientAuraWeight = configManager.getAmbientAuraWeight()
+            ambientAuraWeight = configManager.getAmbientAuraWeight(),
+            isIgnoreAudioFocusEnabled = configManager.isIgnoreAudioFocusEnabled()
         )
     )
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
@@ -303,6 +304,16 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
         _uiState.update { it.copy(ambientAuraWeight = weight) }
     }
 
+    fun setIgnoreAudioFocus(ignore: Boolean) {
+        val audioAttributes = AudioAttributes.Builder()
+            .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+            .setUsage(C.USAGE_MEDIA)
+            .build()
+        // We update the player behavior without stopping playback
+        exoPlayer.setAudioAttributes(audioAttributes, !ignore)
+        _uiState.update { it.copy(isIgnoreAudioFocusEnabled = ignore) }
+    }
+
     fun setVolume(volume: Float) {
         val clamped = volume.coerceIn(0f, 1f)
         exoPlayer.volume = clamped
@@ -325,7 +336,18 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
             }
             fetchLyricsForSong(song)
 
-            val mediaItems = queue.map { track ->
+            // For Firebase tracks, we need to resolve the signed URL before setting it to ExoPlayer
+            val app = applicationContext as com.example.FusionApplication
+            val resolvedQueue = queue.map { track ->
+                if (track.source == MusicSource.FIREBASE && !track.mediaUri.startsWith("http")) {
+                    val resolved = app.firebaseProvider.resolveMediaUri(track.id)
+                    if (resolved != null) track.copy(mediaUri = resolved) else track
+                } else {
+                    track
+                }
+            }
+
+            val mediaItems = resolvedQueue.map { track ->
                 val metadata = MediaMetadata.Builder()
                     .setTitle(track.title)
                     .setArtist(track.artist)
@@ -346,7 +368,8 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
             
             _uiState.update {
                 it.copy(
-                    currentSong = song,
+                    queue = resolvedQueue,
+                    currentSong = resolvedQueue[startIndex],
                     isBuffering = false,
                     isPlaying = true
                 )
@@ -492,6 +515,10 @@ class FusionPlayerManager private constructor(private val applicationContext: Co
     fun initiateManualShutdown() {
         exoPlayer.pause()
         _uiState.update { it.copy(isShuttingDown = true, sleepTimerMinutesLeft = null) }
+    }
+
+    fun resetShutdownState() {
+        _uiState.update { it.copy(isShuttingDown = false) }
     }
 
     fun setEqualizerPreset(preset: EqualizerPreset) {

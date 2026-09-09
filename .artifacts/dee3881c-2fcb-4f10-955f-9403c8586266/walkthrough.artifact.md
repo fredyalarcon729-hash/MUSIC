@@ -1,32 +1,30 @@
-# Walkthrough - Botón de Encendido Neon: Funcionalidad y Estética
+# Walkthrough - Conexión Exitosa con Firebase Cloud
 
-Se ha transformado el indicador de encendido en un botón funcional y altamente estético, integrando una secuencia de apagado profesional.
+¡La conexión con tu infraestructura en la nube ya está activa! Al añadir el archivo `google-services.json`, has habilitado el canal de comunicación seguro entre Fusion Music y tus servicios de Google Cloud/Firebase.
 
-## Mejoras Implementadas
+## Estado Actual de la Integración
 
-### 1. Interactividad Completa
-- **Botón de Apagado**: El `NeonPowerButton` ahora es un componente interactivo (`Surface` con `onClick`).
-- **Lógica de Cierre**: Al pulsar el botón:
-    1. Se pausa la música instantáneamente.
-    2. Se activa el estado `isShuttingDown`.
-    3. Se muestra un overlay inmersivo de "CERRANDO SESIÓN".
-    4. La aplicación se cierra automáticamente tras 3 segundos.
+### 1. Enlace Establecido
+- La aplicación ha sido recompilada incluyendo tus credenciales de proyecto.
+- Los módulos de **Firestore** y **Storage** ahora apuntan directamente a tu base de datos y a tu bucket `music_v01`.
 
-### 2. Refinamiento Estético Premium
-- **Diseño Compacto**: Se redujo el tamaño a **38dp**, dándole un aire más minimalista y sofisticado.
-- **Aura de Neón Mejorada**: Se ajustó el gradiente radial y la sombra para que el resplandor sea más etéreo y nítido, evitando manchas visuales.
-- **Ubicación Optimizada**: Se ajustó el margen superior (10dp) para una alineación perfecta con los iconos del sistema en la barra de estado.
-- **Estados Visuales**: El botón se desactiva visualmente (gris y sin animación) una vez iniciado el proceso de apagado.
+### 2. Autenticación Requerida
+- Como medida de seguridad, las reglas de tu base de datos requieren que el usuario esté identificado.
+- **Acción**: Asegúrate de iniciar sesión con tu cuenta de Google dentro de la app para que Firebase te permita leer la lista de canciones.
 
-## Detalles Técnicos
-- **Workflows**: `NeonPowerButton (UI)` -> `MainViewModel.shutdownApp()` -> `PlayerManager.initiateManualShutdown()`.
-- **Accesibilidad**: Se añadió `contentDescription` para mejorar la experiencia con lectores de pantalla.
+## 🚀 Pasos para tu primera Sincronización Real
 
-## Cómo Probarlo
-1.  Busca el icono de encendido en la esquina superior derecha de la pantalla principal.
-2.  Toca el botón.
-3.  Observa cómo la música se detiene y aparece la pantalla de despedida neon.
-4.  La app se cerrará por sí sola tras unos segundos.
+Ahora que la "llave" está puesta, sigue este flujo para ver tu música:
+
+1.  **Sube un MP3**: Asegúrate de tener al menos un archivo en `gs://music_v01/music/`.
+2.  **Abre la App**: Inicia Fusion Music en tu dispositivo.
+3.  **Identifícate**: Si no lo has hecho, pulsa en el icono de usuario/perfil e inicia sesión con Google.
+4.  **Sincroniza**: Ve a **Ajustes > Biblioteca** y pulsa el botón rosa **"Sincronizar Nube"**.
+5.  **Verifica**: Ve a la pestaña de canciones. Debería aparecer tu archivo con el icono naranja de Firebase.
+
+## Solución de Problemas Comunes
+- **Si el botón de sincronización no hace nada**: Verifica que tengas conexión a internet y que las reglas de seguridad en la consola de Firebase estén en modo "read" para usuarios autenticados.
+- **Si la canción aparece pero no suena**: Asegúrate de que el nombre del archivo en Storage sea exactamente igual al campo `file_name` en Firestore (incluyendo mayúsculas y la extensión `.mp3`).
 
 > [!TIP]
-> El color del botón siempre coincide con la carátula de la canción actual, creando una armonía visual constante en toda la interfaz.
+> ¡Felicidades! Acabas de convertir tu reproductor local en un sistema de streaming personal privado.

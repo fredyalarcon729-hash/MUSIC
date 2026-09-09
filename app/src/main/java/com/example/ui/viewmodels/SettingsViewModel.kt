@@ -58,7 +58,41 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _ambientAuraWeight = MutableStateFlow(configManager.getAmbientAuraWeight())
     val ambientAuraWeight = _ambientAuraWeight.asStateFlow()
 
+    private val _isIgnoreAudioFocusEnabled = MutableStateFlow(configManager.isIgnoreAudioFocusEnabled())
+    val isIgnoreAudioFocusEnabled = _isIgnoreAudioFocusEnabled.asStateFlow()
+
+    private val _isMultiAudioSupported = MutableStateFlow(false)
+    val isMultiAudioSupported = _isMultiAudioSupported.asStateFlow()
+
+    private val _isSyncingCloud = MutableStateFlow(false)
+    val isSyncingCloud = _isSyncingCloud.asStateFlow()
+
     val servicesState = servicesManager.servicesState
+
+    init {
+        detectHardwareCapabilities()
+    }
+
+    private fun detectHardwareCapabilities() {
+        val audioManager = app.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+        val supported: Boolean = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            try {
+                val method = audioManager.javaClass.getMethod("isMultiAudioPlaybackSupported")
+                method.invoke(audioManager) as Boolean
+            } catch (_: Exception) {
+                android.os.Build.MANUFACTURER.equals("samsung", ignoreCase = true)
+            }
+        } else {
+            android.os.Build.MANUFACTURER.equals("samsung", ignoreCase = true)
+        }
+        _isMultiAudioSupported.value = supported
+    }
+
+    fun setIgnoreAudioFocusEnabled(enabled: Boolean) {
+        configManager.setIgnoreAudioFocusEnabled(enabled)
+        _isIgnoreAudioFocusEnabled.value = enabled
+        playerManager.setIgnoreAudioFocus(enabled)
+    }
 
     fun updateYouTubeApiKey(apiKey: String) {
         viewModelScope.launch {
@@ -120,6 +154,23 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         configManager.setAmbientAuraEnabled(enabled)
         _isAmbientAuraEnabled.value = enabled
         playerManager.setAmbientAuraEnabled(enabled)
+    }
+
+    fun syncFirebaseLibrary() {
+        if (_isSyncingCloud.value) return
+        viewModelScope.launch {
+            _isSyncingCloud.value = true
+            val app = getApplication<com.example.FusionApplication>()
+            val result = app.firebaseProvider.syncCloudLibrary()
+            _isSyncingCloud.value = false
+            
+            // Refresh main library if songs were added
+            result.onSuccess { count ->
+                if (count > 0) {
+                    app.musicRepository.fetchFirebaseMusic()
+                }
+            }
+        }
     }
 
     fun updateAmbientAuraStyle(style: com.example.core.model.AmbientAuraStyle) {

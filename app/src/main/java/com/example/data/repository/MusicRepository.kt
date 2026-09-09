@@ -1,5 +1,6 @@
 package com.example.data.repository
 
+import android.util.Log
 import com.example.core.model.Album
 import com.example.core.model.Artist
 import com.example.core.model.MusicSource
@@ -7,6 +8,7 @@ import com.example.core.model.Song
 import com.example.core.source.ConfigManager
 import com.example.core.source.LocalMusicSourceProvider
 import com.example.core.source.deezer.DeezerMusicSourceProvider
+import com.example.core.source.firebase.FirebaseMusicSourceProvider
 import com.example.core.source.youtube.YouTubeDownloadManager
 import com.example.core.source.youtube.YouTubeMusicSourceProvider
 import com.example.data.local.dao.MusicDao
@@ -36,11 +38,13 @@ class MusicRepository(
     val downloadManager: YouTubeDownloadManager,
     val youtubeProvider: YouTubeMusicSourceProvider,
     val deezerProvider: DeezerMusicSourceProvider,
+    val firebaseProvider: FirebaseMusicSourceProvider,
     private val configManager: ConfigManager
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private val _rawSongs = MutableStateFlow<List<Song>>(emptyList())
+    private val _firebaseSongs = MutableStateFlow<List<Song>>(emptyList())
 
     private val _isScanning = MutableStateFlow(value = false)
     val isScanning: StateFlow<Boolean> = _isScanning.asStateFlow()
@@ -76,21 +80,28 @@ class MusicRepository(
 
     val totalDownloadedSizeBytes: Flow<Long> = musicDao.getTotalDownloadedSizeBytes().map { it ?: 0L }
 
-    // Unified songs: Local MediaStore + Downloaded YouTube Tracks
+    // Unified songs: Local MediaStore + Downloaded YouTube Tracks + Firebase Cloud
     val songsWithFavorites: Flow<List<Song>> = combine(
         _rawSongs,
         downloadedSongsFlow,
+        _firebaseSongs,
         favoritesFlow
-    ) { localSongs, downloadedSongs, favs ->
+    ) { localSongs, downloadedSongs, firebaseSongs, favs ->
         val favSet = favs.asSequence().map { it.songId }.toSet()
         val localMapped = localSongs.map { song ->
+            song.copy(isFavorite = favSet.contains(song.id))
+        }
+        val firebaseMapped = firebaseSongs.map { song ->
             song.copy(isFavorite = favSet.contains(song.id))
         }
 
         // Merge, avoiding duplicate IDs if any
         val localIds = localMapped.asSequence().map { it.id }.toSet()
         val nonDuplicateDownloaded = downloadedSongs.filterNot { localIds.contains(it.id) }
-        localMapped + nonDuplicateDownloaded
+        val finalIds = (localIds + nonDuplicateDownloaded.map { it.id }).toSet()
+        val nonDuplicateFirebase = firebaseMapped.filterNot { finalIds.contains(it.id) }
+        
+        localMapped + nonDuplicateDownloaded + nonDuplicateFirebase
     }.distinctUntilChanged()
 
     val songsState: StateFlow<List<Song>> = songsWithFavorites
@@ -135,7 +146,17 @@ class MusicRepository(
     init {
         scope.launch {
             rescanLocalMusic()
+            fetchFirebaseMusic()
             seedDefaultPlaylistsIfNeeded()
+        }
+    }
+
+    suspend fun fetchFirebaseMusic() {
+        try {
+            val songs = firebaseProvider.searchSongs("")
+            _firebaseSongs.value = songs
+        } catch (e: Exception) {
+            Log.e("MusicRepository", "Failed to fetch Firebase music: ${e.message}")
         }
     }
 

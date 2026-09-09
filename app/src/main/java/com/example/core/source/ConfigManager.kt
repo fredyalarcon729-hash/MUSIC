@@ -33,6 +33,7 @@ class ConfigManager(context: Context) {
         private const val KEY_AMBIENT_AURA_STYLE = "ambient_aura_style"
         private const val KEY_AMBIENT_AURA_INTENSITY = "ambient_aura_intensity"
         private const val KEY_AMBIENT_AURA_WEIGHT = "ambient_aura_weight"
+        private const val KEY_IGNORE_AUDIO_FOCUS = "ignore_audio_focus"
         private const val KEY_SEARCH_HISTORY = "search_history"
         
         private const val KEY_LAST_SONG_JSON = "last_song_json"
@@ -144,6 +145,9 @@ class ConfigManager(context: Context) {
 
     fun getAmbientAuraWeight(): Float = prefs.getFloat(KEY_AMBIENT_AURA_WEIGHT, 0.8f)
     fun saveAmbientAuraWeight(weight: Float) = prefs.edit { putFloat(KEY_AMBIENT_AURA_WEIGHT, weight) }
+
+    fun isIgnoreAudioFocusEnabled(): Boolean = prefs.getBoolean(KEY_IGNORE_AUDIO_FOCUS, false)
+    fun setIgnoreAudioFocusEnabled(enabled: Boolean) = prefs.edit { putBoolean(KEY_IGNORE_AUDIO_FOCUS, enabled) }
 
     /**
      * Get the stored YouTube API key.

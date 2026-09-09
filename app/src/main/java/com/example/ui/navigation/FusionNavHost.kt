@@ -159,6 +159,9 @@ fun FusionNavHost(
             val ambientAuraStyle by settingsViewModel.ambientAuraStyle.collectAsState()
             val ambientAuraIntensity by settingsViewModel.ambientAuraIntensity.collectAsState()
             val ambientAuraWeight by settingsViewModel.ambientAuraWeight.collectAsState()
+            val isIgnoreAudioFocusEnabled by settingsViewModel.isIgnoreAudioFocusEnabled.collectAsState()
+            val isMultiAudioSupported by settingsViewModel.isMultiAudioSupported.collectAsState()
+            val isSyncingCloud by settingsViewModel.isSyncingCloud.collectAsState()
 
             SettingsScreen(
                 playerState = playerState,
@@ -172,7 +175,11 @@ fun FusionNavHost(
                 ambientAuraStyle = ambientAuraStyle,
                 ambientAuraIntensity = ambientAuraIntensity,
                 ambientAuraWeight = ambientAuraWeight,
+                isIgnoreAudioFocusEnabled = isIgnoreAudioFocusEnabled,
+                isMultiAudioSupported = isMultiAudioSupported,
+                isSyncingCloud = isSyncingCloud,
                 onRescan = { mainViewModel.rescanLocalLibrary() },
+                onSyncCloud = { settingsViewModel.syncFirebaseLibrary() },
                 onSelectEqualizer = { mainViewModel.setEqualizerPreset(it) },
                 onSetBandLevel = { band, level -> mainViewModel.setBandLevel(band, level) },
                 onSetBassBoost = { strength -> mainViewModel.setBassBoost(strength) },
@@ -182,6 +189,7 @@ fun FusionNavHost(
                 onToggleFilterVoiceNotes = { settingsViewModel.setFilterVoiceNotesEnabled(it) },
                 onToggleFilterDuplicates = { settingsViewModel.setFilterDuplicatesEnabled(it) },
                 onToggleAmbientAura = { settingsViewModel.setAmbientAuraEnabled(it) },
+                onToggleIgnoreAudioFocus = { settingsViewModel.setIgnoreAudioFocusEnabled(it) },
                 onSetAmbientAuraStyle = { settingsViewModel.updateAmbientAuraStyle(it) },
                 onSetAmbientAuraIntensity = { settingsViewModel.updateAmbientAuraIntensity(it) },
                 onSetAmbientAuraWeight = { settingsViewModel.updateAmbientAuraWeight(it) },

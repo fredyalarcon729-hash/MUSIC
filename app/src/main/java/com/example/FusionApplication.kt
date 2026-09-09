@@ -9,6 +9,7 @@ import com.example.core.source.ConfigManager
 import com.example.core.source.ExternalServicesManager
 import com.example.core.source.LocalMusicSourceProvider
 import com.example.core.source.deezer.DeezerMusicSourceProvider
+import com.example.core.source.firebase.FirebaseMusicSourceProvider
 import com.example.core.source.youtube.YouTubeAudioResolver
 import com.example.core.source.youtube.YouTubeDownloadManager
 import com.example.core.source.youtube.YouTubeMusicSourceProvider
@@ -33,6 +34,9 @@ class FusionApplication : Application() {
     lateinit var deezerProvider: DeezerMusicSourceProvider
         private set
 
+    lateinit var firebaseProvider: FirebaseMusicSourceProvider
+        private set
+
     lateinit var configManager: ConfigManager
         private set
 
@@ -54,6 +58,13 @@ class FusionApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
+        // Initialize Firebase early to prevent service access crashes
+        try {
+            com.google.firebase.FirebaseApp.initializeApp(this)
+        } catch (e: Exception) {
+            android.util.Log.e("FusionApplication", "Failed to initialize Firebase: ${e.message}")
+        }
+
         createNotificationChannel()
 
         configManager = ConfigManager(this)
@@ -62,11 +73,13 @@ class FusionApplication : Application() {
         val resolver = YouTubeAudioResolver(this, configManager.getYouTubeApiKey(), null, configManager.getRapidApiKey())
         youTubeProvider = YouTubeMusicSourceProvider(resolver)
         deezerProvider = DeezerMusicSourceProvider()
+        firebaseProvider = FirebaseMusicSourceProvider()
         downloadManager = YouTubeDownloadManager(this, database.musicDao(), resolver)
 
         servicesManager = ExternalServicesManager(this, localProvider).apply {
             registerProvider(youTubeProvider)
             registerProvider(deezerProvider)
+            registerProvider(firebaseProvider)
         }
 
         musicRepository = MusicRepository(
@@ -75,6 +88,7 @@ class FusionApplication : Application() {
             downloadManager = downloadManager,
             youtubeProvider = youTubeProvider,
             deezerProvider = deezerProvider,
+            firebaseProvider = firebaseProvider,
             configManager = configManager
         )
         authManager = AuthManager(this)
